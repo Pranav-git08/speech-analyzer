@@ -59,6 +59,7 @@ export const NTJILoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [parsedSkills, setParsedSkills] = useState<string[]>([]);
+  const [rawText, setRawText] = useState('');
   const [customSkill, setCustomSkill] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
@@ -92,6 +93,7 @@ export const NTJILoginPage: React.FC = () => {
 
     // High-precision client-side extraction using PDF.js
     const extracted = await extractResumeData(chosen);
+    setRawText(extracted.text);
     setName(extracted.name);
     setEmail(extracted.email);
     setPhone(extracted.phone);
@@ -122,16 +124,19 @@ export const NTJILoginPage: React.FC = () => {
       if (roles && roles.length > 0) {
         let bestRole = roles[0];
         let maxScore = -1;
+        const lowerRaw = extracted.text.toLowerCase();
 
         for (const r of roles) {
           const reqs = r.requiredSkills || [];
           const matches = reqs.filter((req) => {
             const reqLower = req.toLowerCase().trim();
             const synonyms = NON_TECH_SYNONYMS[reqLower] || [reqLower];
-            return finalSkills.some((p) => {
+            const inParsed = finalSkills.some((p) => {
               const pLower = p.toLowerCase().trim();
               return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
             });
+            if (inParsed) return true;
+            return synonyms.some((syn) => lowerRaw.includes(syn.toLowerCase()));
           }).length;
 
           const pct = reqs.length > 0 ? (matches / reqs.length) * 100 : 0;
@@ -150,16 +155,19 @@ export const NTJILoginPage: React.FC = () => {
     }
   };
 
-  // ── Strict Skill Match & Eligibility Calculation (Zero false positives) ─────
+  // ── Robust Skill Match & Eligibility Calculation ───────────────────────────
   const requiredSkills = selectedRole?.requiredSkills || [];
   
   const matchedSkills = requiredSkills.filter((req) => {
     const reqLower = req.toLowerCase().trim();
     const synonyms = NON_TECH_SYNONYMS[reqLower] || [reqLower];
-    return parsedSkills.some((p) => {
+    const inParsed = parsedSkills.some((p) => {
       const pLower = p.toLowerCase().trim();
       return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
     });
+    if (inParsed) return true;
+    const lowerRaw = rawText.toLowerCase();
+    return synonyms.some((syn) => lowerRaw.includes(syn.toLowerCase()));
   });
 
   const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));
