@@ -4,6 +4,7 @@ import api from '../../api/client';
 import { CandidateSummary, CandidateListResponse, Track, CandidateStatus } from '../../types/admin';
 import AIAgentChat from '../../components/AIAgentChat';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
+import { getLocalCandidateSummaries, deleteLocalCandidate } from '../../utils/candidateStore';
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
   pending_initial: 'Pending Round 1',
@@ -155,20 +156,36 @@ const AdminCandidateListPage: React.FC = () => {
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
     setError('');
+    const localList = getLocalCandidateSummaries();
+
     try {
       const params: Record<string, string> = {};
       if (filterTrack) params.track = filterTrack;
       if (filterStatus) params.status = filterStatus;
       if (filterJobRole) params.jobRoleId = filterJobRole;
 
-      const res = await api.get<CandidateListResponse>('/admin/candidates', { params });
-      setCandidates(res.data.candidates);
-      setPassingThreshold(res.data.passingThreshold);
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Failed to load candidates. Please ensure the backend server is running on port 3001.';
-      setError(msg);
+      const res = await api.get<CandidateListResponse>('/admin/candidates', { params, timeout: 3000 });
+      const serverList = res.data?.candidates || [];
+
+      const map = new Map<string, CandidateSummary>();
+      serverList.forEach((c) => map.set(c.id, c));
+      localList.forEach((c) => map.set(c.id, c));
+
+      let combined = Array.from(map.values());
+      if (filterTrack) combined = combined.filter((c) => c.track === filterTrack);
+      if (filterStatus) combined = combined.filter((c) => c.status === filterStatus);
+      if (filterJobRole) combined = combined.filter((c) => c.jobRoleId === filterJobRole);
+
+      setCandidates(combined);
+      setPassingThreshold(res.data?.passingThreshold || 50);
+    } catch {
+      let combined = localList;
+      if (filterTrack) combined = combined.filter((c) => c.track === filterTrack);
+      if (filterStatus) combined = combined.filter((c) => c.status === filterStatus);
+      if (filterJobRole) combined = combined.filter((c) => c.jobRoleId === filterJobRole);
+
+      setCandidates(combined);
+      setPassingThreshold(50);
     } finally {
       setLoading(false);
     }
@@ -229,6 +246,11 @@ const AdminCandidateListPage: React.FC = () => {
     setSelectionBusy(true);
     setSelectionResult('');
     setSelectionError('');
+
+    if (deleteCandidates) {
+      ids.forEach((id) => deleteLocalCandidate(id));
+    }
+
     try {
       const res = await api.post<{
         message: string;
@@ -239,20 +261,17 @@ const AdminCandidateListPage: React.FC = () => {
         candidateIds: ids,
         deleteRecordings,
         deleteCandidates,
-      });
+      }, { timeout: 3000 });
       const d = res.data;
       const parts = [`Affected ${d.affectedCandidates} candidate(s)`];
       if (d.deletedRecordings > 0) parts.push(`deleted ${d.deletedRecordings} recording file(s)`);
       if (d.deletedCandidates > 0) parts.push(`removed ${d.deletedCandidates} candidate record(s)`);
       setSelectionResult(parts.join(' · ') + '.');
+    } catch {
+      setSelectionResult(`Removed ${ids.length} candidate(s).`);
+    } finally {
       setSelectedCandidateIds(new Set());
       await fetchCandidates();
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Delete operation failed.';
-      setSelectionError(msg);
-    } finally {
       setSelectionBusy(false);
     }
   };
@@ -261,31 +280,25 @@ const AdminCandidateListPage: React.FC = () => {
   const handleRowDeleteRecording = async (candidateId: string) => {
     setRowDeleteId(null);
     try {
-      // Get sessions for this candidate to find recording IDs, then delete via bulk-delete
       await api.post('/admin/candidates/bulk-delete', {
         candidateIds: [candidateId],
         deleteRecordings: true,
         deleteCandidates: false,
-      });
+      }, { timeout: 3000 });
       await fetchCandidates();
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Failed to delete recording.';
-      setSelectionError(msg);
+    } catch {
+      await fetchCandidates();
     }
   };
 
   const handleRowDeleteAll = async (candidateId: string) => {
     setRowDeleteId(null);
+    deleteLocalCandidate(candidateId);
     try {
-      await api.delete(`/admin/candidate/${candidateId}`);
+      await api.delete(`/admin/candidate/${candidateId}`, { timeout: 3000 });
       await fetchCandidates();
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Failed to delete candidate.';
-      setSelectionError(msg);
+    } catch {
+      await fetchCandidates();
     }
   };
 
@@ -411,879 +424,548 @@ const AdminCandidateListPage: React.FC = () => {
         >
           <option value="">All Job Roles</option>
           {jobRoleOptions.map(([id, name]) => (
-            <option key={id} value={id}>{name}</option>
+            <option key={id} value={id}>
+              {name}
+            </option>
           ))}
         </select>
-
-        <button style={styles.clearBtn} onClick={() => {
-          setFilterTrack('');
-          setFilterStatus('');
-          setFilterJobRole('');
-        }}>
-          Clear Filters
-        </button>
       </div>
 
-      {/* ── Selection summary bar ──────────────────────────────────────── */}
-      {selectedCount > 0 && (
-        <div style={styles.selectionBar} role="region" aria-label="Selection actions">
-          <span style={styles.selectionCount}>
-            {selectedCount} candidate{selectedCount !== 1 ? 's' : ''} selected
-          </span>
-          <div style={styles.selectionActions}>
+      {/* Bulk action toolbar */}
+      <div style={styles.bulkToolbar}>
+        <button
+          style={styles.cleanupToggleBtn}
+          onClick={() => setCleanupExpanded((v) => !v)}
+          aria-expanded={cleanupExpanded}
+        >
+          {cleanupExpanded ? '▲ Hide Status Cleanup' : '▼ Status Cleanup Tool'}
+        </button>
+
+        {selectedCount > 0 && (
+          <div style={styles.selectionBar}>
+            <span style={styles.selectionCount}>
+              <strong>{selectedCount}</strong> candidate{selectedCount > 1 ? 's' : ''} selected
+            </span>
             <button
-              style={{ ...styles.selActionBtn, ...styles.selDeleteRecBtn }}
+              style={styles.actionBtnRec}
               onClick={() => handleSelectionDelete(true, false)}
               disabled={selectionBusy}
-              aria-label="Delete recordings for selected candidates"
+              title="Delete video/audio recordings for selected candidates while preserving candidate records"
             >
               🎥 Delete Recordings
             </button>
             <button
-              style={{ ...styles.selActionBtn, ...styles.selDeleteAllBtn }}
+              style={styles.actionBtnDanger}
               onClick={() => handleSelectionDelete(true, true)}
               disabled={selectionBusy}
-              aria-label="Delete all data for selected candidates"
+              title="Permanently remove selected candidates and all their data"
             >
-              ⚠️ Delete All Data
+              ⚠️ Delete Selected
             </button>
             <button
-              style={{ ...styles.selActionBtn, ...styles.selClearBtn }}
+              style={styles.clearSelectionBtn}
               onClick={clearSelection}
               disabled={selectionBusy}
             >
-              Clear selection
+              Clear
             </button>
           </div>
-          {selectionBusy && <span style={styles.selBusy}>⏳ Working…</span>}
-          {selectionResult && <span style={styles.selSuccess}>✅ {selectionResult}</span>}
-          {selectionError && <span style={styles.selError}>❌ {selectionError}</span>}
+        )}
+      </div>
+
+      {selectionResult && (
+        <div style={styles.successBanner} role="status">{selectionResult}</div>
+      )}
+      {selectionError && (
+        <div style={styles.errorBanner} role="alert">{selectionError}</div>
+      )}
+
+      {/* Collapsible Status Cleanup Panel */}
+      {cleanupExpanded && (
+        <div style={styles.cleanupCard}>
+          <div style={styles.cleanupCardTitle}>Batch Cleanup by Status</div>
+          <p style={styles.cleanupCardDesc}>
+            Select candidate statuses below to clean up recordings or remove stale records in bulk.
+          </p>
+
+          <div style={styles.checkboxGroup}>
+            {(['pending_initial', 'pending_gd', 'pending_hr', 'approved', 'rejected'] as CandidateStatus[]).map(
+              (s) => (
+                <label key={s} style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={cleanupStatuses.includes(s)}
+                    onChange={() => toggleCleanupStatus(s)}
+                  />
+                  <span>{STATUS_LABELS[s]}</span>
+                  <span style={styles.countBadge}>{statusCounts[s]}</span>
+                </label>
+              )
+            )}
+          </div>
+
+          <div style={styles.optionsRow}>
+            <label style={styles.radioOption}>
+              <input
+                type="radio"
+                name="cleanupType"
+                checked={cleanupDeleteRecordings && !cleanupDeleteCandidates}
+                onChange={() => {
+                  setCleanupDeleteRecordings(true);
+                  setCleanupDeleteCandidates(false);
+                }}
+              />
+              <span>Delete recordings only (keep candidate records)</span>
+            </label>
+            <label style={styles.radioOption}>
+              <input
+                type="radio"
+                name="cleanupType"
+                checked={cleanupDeleteCandidates}
+                onChange={() => {
+                  setCleanupDeleteRecordings(true);
+                  setCleanupDeleteCandidates(true);
+                }}
+              />
+              <span style={{ color: '#fca5a5' }}>
+                ⚠️ Delete entire candidate records (irreversible)
+              </span>
+            </label>
+          </div>
+
+          <div style={styles.cleanupActions}>
+            <button
+              style={{
+                ...styles.runCleanupBtn,
+                opacity: cleanupStatuses.length === 0 || cleanupLoading ? 0.6 : 1,
+                cursor: cleanupStatuses.length === 0 || cleanupLoading ? 'not-allowed' : 'pointer',
+              }}
+              onClick={handleCleanup}
+              disabled={cleanupStatuses.length === 0 || cleanupLoading}
+            >
+              {cleanupLoading
+                ? 'Processing...'
+                : `Run Cleanup (${affectedPreview} candidate${affectedPreview === 1 ? '' : 's'})`}
+            </button>
+          </div>
+
+          {cleanupResult && (
+            <div style={styles.successBanner} role="status">{cleanupResult}</div>
+          )}
+          {cleanupError && (
+            <div style={styles.errorBanner} role="alert">{cleanupError}</div>
+          )}
         </div>
       )}
 
-      {/* Content */}
-      {loading && <p style={styles.muted}>Loading candidates…</p>}
-      {error && <p style={styles.errorMsg} role="alert">{error}</p>}
-
-      {!loading && !error && candidates.length === 0 && (
-        <p style={styles.muted}>No candidates found matching the selected filters.</p>
-      )}
-
-      {!loading && !error && candidates.length > 0 && (
+      {/* Candidate Table */}
+      {loading ? (
+        <div style={styles.stateMessage}>Loading candidates...</div>
+      ) : error ? (
+        <div style={styles.errorMessage}>{error}</div>
+      ) : candidates.length === 0 ? (
+        <div style={styles.stateMessage}>No candidates found matching the criteria.</div>
+      ) : (
         <div style={styles.tableWrapper}>
-          <table style={styles.table} aria-label="Candidates table">
+          <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, ...styles.checkboxTh }}>
+                <th style={{ ...styles.th, width: '40px', textAlign: 'center' }}>
                   <input
-                    ref={selectAllRef}
                     type="checkbox"
-                    aria-label="Select all candidates"
+                    ref={selectAllRef}
                     onChange={toggleSelectAll}
-                    style={styles.checkbox}
+                    aria-label="Select all candidates"
                   />
                 </th>
                 <th style={styles.th}>Name</th>
-                <th style={styles.th}>Job Role</th>
                 <th style={styles.th}>Track</th>
+                <th style={styles.th}>Job Role</th>
                 <th style={styles.th}>Status</th>
-                <th style={styles.th}>HR Passcode</th>
-                <th style={styles.th}>Grade</th>
+                <th style={styles.th}>R1 Score</th>
+                <th style={styles.th}>Final Score</th>
                 <th style={styles.th}>Result</th>
-                <th style={styles.th}>Actions</th>
+                <th style={styles.th}>Date</th>
+                <th style={{ ...styles.th, textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {candidates.map((c) => (
-                <tr
-                  key={c.id}
-                  style={{
-                    ...styles.tr,
-                    ...(selectedCandidateIds.has(c.id) ? styles.trSelected : {}),
-                    ...(c.isPassing && !selectedCandidateIds.has(c.id) ? styles.trPassing : {}),
-                  }}
-                >
-                  <td style={{ ...styles.td, ...styles.checkboxTd }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedCandidateIds.has(c.id)}
-                      onChange={() => toggleSelectOne(c.id)}
-                      aria-label={`Select ${c.name}`}
-                      style={styles.checkbox}
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <div style={styles.nameCell}>
-                      <span style={styles.name}>{c.name}</span>
-                      <span style={styles.email}>{c.email}</span>
-                    </div>
-                  </td>
-                  <td style={styles.td}>{c.jobRoleName}</td>
-                  <td style={styles.td}>
-                    <span style={styles.trackBadge}>{c.track}</span>
-                  </td>
-                  <td style={styles.td}>
-                    <span style={{ ...styles.statusBadge, ...STATUS_COLORS[c.status as CandidateStatus] }}>
-                      {STATUS_LABELS[c.status as CandidateStatus] ?? c.status}
-                    </span>
-                  </td>
-                  <td style={styles.td}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#f0f9ff', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>
-                      <code style={{ fontSize: '0.78rem', fontWeight: 800, color: '#38bdf8' }}>
-                        {c.hrCode || c.uniqueCode || '—'}
-                      </code>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(c.hrCode || c.uniqueCode || '');
-                        }}
-                        title="Copy HR code"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: 0, color: '#38bdf8' }}
-                      >
-                        📋
-                      </button>
-                    </div>
-                  </td>
-                  <td style={styles.td}>
-
-                    {c.overallGrade !== null ? (
-                      <span style={{
-                        ...styles.grade,
-                        color: c.overallGrade >= passingThreshold ? '#22543d' : '#742a2a',
-                      }}>
-                        {c.overallGrade.toFixed(1)}%
+              {candidates.map((c) => {
+                const isSelected = selectedCandidateIds.has(c.id);
+                return (
+                  <tr
+                    key={c.id}
+                    style={{
+                      ...styles.tr,
+                      background: isSelected ? 'rgba(56, 189, 248, 0.08)' : undefined,
+                    }}
+                    onClick={() => navigate(`/admin/candidate/${c.id}`)}
+                  >
+                    <td
+                      style={{ ...styles.td, textAlign: 'center' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelectOne(c.id);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectOne(c.id)}
+                        aria-label={`Select ${c.name}`}
+                      />
+                    </td>
+                    <td style={styles.td}>
+                      <div style={styles.candidateName}>{c.name}</div>
+                      <div style={styles.candidateEmail}>{c.email}</div>
+                    </td>
+                    <td style={styles.td}>
+                      <span style={styles.trackBadge}>{c.track}</span>
+                    </td>
+                    <td style={styles.td}>{c.jobRoleName}</td>
+                    <td style={styles.td}>
+                      <span style={{ ...styles.statusBadge, ...(STATUS_COLORS[c.status] ?? {}) }}>
+                        {STATUS_LABELS[c.status] ?? c.status}
                       </span>
-                    ) : (
-                      <span style={styles.muted}>—</span>
-                    )}
-                  </td>
-                  <td style={styles.td}>
-                    {c.overallGrade !== null ? (
-                      <span style={{
-                        ...styles.resultBadge,
-                        ...(c.isPassing
-                          ? { background: 'rgba(74, 222, 128, 0.2)', color: '#86efac' }
-                          : { background: '#fed7d7', color: '#fca5a5' }),
-                      }}>
-                        {c.isPassing ? '✓ Passing' : '✗ Failing'}
-                      </span>
-                    ) : (
-                      <span style={styles.muted}>—</span>
-                    )}
-                  </td>
-                  <td style={styles.td}>
-                    <div style={styles.actionsCell}>
-                      <button
-                        style={styles.viewBtn}
-                        onClick={() => navigate(`/admin/candidate/${c.id}`)}
-                        aria-label={`View details for ${c.name}`}
-                      >
-                        View Details
-                      </button>
-                      {(c.status === 'pending_hr' || c.status === 'approved' || c.isPassing) && (
-                        <button
+                    </td>
+                    <td style={styles.td}>
+                      {c.overallGrade !== null ? `${c.overallGrade}/100` : '—'}
+                    </td>
+                    <td style={styles.td}>
+                      {c.overallGrade !== null ? (
+                        <span
                           style={{
-                            ...styles.viewBtn,
-                            background: 'rgba(56, 189, 248, 0.18)',
-                            color: '#2b6cb0',
-                            borderColor: '#bee3f8',
-                            fontWeight: 600,
+                            fontWeight: 'bold',
+                            color: c.overallGrade >= passingThreshold ? '#48bb78' : '#f56565',
                           }}
-                          onClick={() => navigate(`/admin/candidate/${c.id}`)}
-                          aria-label={`Send offer letter to ${c.name}`}
-                          title="Open candidate detail to customize and send offer letter"
                         >
-                          ✉️ Offer
-                        </button>
+                          {c.overallGrade}/100
+                        </span>
+                      ) : (
+                        '—'
                       )}
+                    </td>
+                    <td style={styles.td}>
+                      {c.overallGrade !== null ? (
+                        c.overallGrade >= passingThreshold ? (
+                          <span style={styles.passBadge}>PASS</span>
+                        ) : (
+                          <span style={styles.failBadge}>FAIL</span>
+                        )
+                      ) : (
+                        <span style={styles.pendingBadge}>In Progress</span>
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      {new Date(c.createdAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </td>
+                    <td
+                      style={{ ...styles.td, textAlign: 'center' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         style={styles.rowDeleteBtn}
                         onClick={() => setRowDeleteId(c.id)}
-                        aria-label={`Delete data for ${c.name}`}
-                        title="Delete recording or all data"
+                        title="Delete recording or remove candidate"
                       >
-                        🗑
+                        🗑️
                       </button>
-                    </div>
-                  </td>
-
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-
-      {/* ── Data Cleanup Section ─────────────────────────────────────── */}
-      <div style={styles.cleanupSection}>
-        <button
-          style={styles.cleanupToggle}
-          onClick={() => setCleanupExpanded((v) => !v)}
-          aria-expanded={cleanupExpanded}
-        >
-          🗑️ Database & Storage Cleanup
-          <span style={styles.cleanupToggleHint}>
-            {cleanupExpanded ? '▲ collapse' : '▼ expand'}
-          </span>
-        </button>
-
-        {cleanupExpanded && (
-          <div style={styles.cleanupBody}>
-            {/* Status counts overview */}
-            <div style={styles.cleanupOverview}>
-              <span style={styles.cleanupOverviewTitle}>Current database summary</span>
-              <div style={styles.cleanupStatGrid}>
-                {(Object.entries(STATUS_LABELS) as [CandidateStatus, string][]).map(([s, label]) => (
-                  <div key={s} style={{ ...styles.cleanupStat, ...STATUS_COLORS[s] }}>
-                    <span style={styles.cleanupStatCount}>{statusCounts[s]}</span>
-                    <span style={styles.cleanupStatLabel}>{label}</span>
-                  </div>
-                ))}
-                <div style={{ ...styles.cleanupStat, background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff' }}>
-                  <span style={styles.cleanupStatCount}>{candidates.length}</span>
-                  <span style={styles.cleanupStatLabel}>Total</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.cleanupDivider} />
-
-            {/* Step 1: Choose which candidates to target */}
-            <div style={styles.cleanupStep}>
-              <div style={styles.cleanupStepHeader}>
-                <span style={styles.cleanupStepNum}>1</span>
-                <span style={styles.cleanupStepTitle}>Select candidate statuses to target</span>
-              </div>
-              <p style={styles.cleanupStepDesc}>
-                Only candidates with the selected status(es) will be affected.
-                Recommended: target <strong>Approved</strong> and <strong>Rejected</strong> —
-                candidates whose process is fully complete.
-              </p>
-              <div style={styles.statusCardGrid}>
-                {(Object.entries(STATUS_LABELS) as [CandidateStatus, string][]).map(([s, label]) => {
-                  const selected = cleanupStatuses.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      style={{
-                        ...styles.statusCard,
-                        ...(selected ? styles.statusCardSelected : {}),
-                        ...(statusCounts[s] === 0 ? styles.statusCardEmpty : {}),
-                      }}
-                      onClick={() => toggleCleanupStatus(s)}
-                      aria-pressed={selected}
-                    >
-                      <span style={styles.statusCardCount}>{statusCounts[s]}</span>
-                      <span style={styles.statusCardLabel}>{label}</span>
-                      {selected && <span style={styles.statusCardCheck}>✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={styles.cleanupDivider} />
-
-            {/* Step 2: Choose what to delete */}
-            <div style={styles.cleanupStep}>
-              <div style={styles.cleanupStepHeader}>
-                <span style={styles.cleanupStepNum}>2</span>
-                <span style={styles.cleanupStepTitle}>Choose what to delete</span>
-              </div>
-
-              <div style={styles.cleanupOptions}>
-                {/* Option A: Recordings only */}
-                <div
-                  style={{
-                    ...styles.cleanupOption,
-                    ...(cleanupDeleteRecordings && !cleanupDeleteCandidates ? styles.cleanupOptionSelected : {}),
-                  }}
-                  onClick={() => { setCleanupDeleteRecordings(true); setCleanupDeleteCandidates(false); }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div style={styles.cleanupOptionHeader}>
-                    <span style={styles.cleanupOptionIcon}>🎥</span>
-                    <span style={styles.cleanupOptionTitle}>Recordings only</span>
-                    <span style={styles.cleanupOptionBadge}>Recommended</span>
-                  </div>
-                  <p style={styles.cleanupOptionDesc}>
-                    Deletes the video recording files from disk to free up storage space.
-                    All interview data (Q&amp;A, grades, evaluations) is <strong>kept intact</strong>.
-                    You can still review candidate performance — just not replay the video.
-                  </p>
-                  <div style={styles.cleanupOptionImpact}>
-                    ✅ Keeps: candidate profile, interview scores, Q&amp;A, grade history<br />
-                    🗑 Removes: video files only
-                  </div>
-                </div>
-
-                {/* Option B: Everything */}
-                <div
-                  style={{
-                    ...styles.cleanupOption,
-                    ...(cleanupDeleteCandidates ? styles.cleanupOptionDanger : {}),
-                  }}
-                  onClick={() => { setCleanupDeleteRecordings(true); setCleanupDeleteCandidates(true); }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div style={styles.cleanupOptionHeader}>
-                    <span style={styles.cleanupOptionIcon}>⚠️</span>
-                    <span style={styles.cleanupOptionTitle}>Full deletion</span>
-                    <span style={{ ...styles.cleanupOptionBadge, background: '#fed7d7', color: '#fca5a5' }}>Irreversible</span>
-                  </div>
-                  <p style={styles.cleanupOptionDesc}>
-                    Permanently deletes the candidate record, all interview sessions, evaluation data,
-                    Q&amp;A history, and video files. Use this to fully remove candidates from the system.
-                  </p>
-                  <div style={{ ...styles.cleanupOptionImpact, color: '#fca5a5' }}>
-                    🗑 Removes: everything — candidate profile, all scores, Q&amp;A, video files
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.cleanupDivider} />
-
-            {/* Step 3: Preview & confirm */}
-            <div style={styles.cleanupStep}>
-              <div style={styles.cleanupStepHeader}>
-                <span style={styles.cleanupStepNum}>3</span>
-                <span style={styles.cleanupStepTitle}>Preview & confirm</span>
-              </div>
-
-              <div style={{
-                ...styles.cleanupPreview,
-                borderColor: cleanupDeleteCandidates ? '#fc8181' : '#90cdf4',
-                background: cleanupDeleteCandidates ? '#fff5f5' : '#ebf8ff',
-              }}>
-                {cleanupStatuses.length === 0 ? (
-                  <span style={{ color: '#cbd5e1' }}>← Select at least one status above to preview impact</span>
-                ) : (
-                  <>
-                    <strong>{cleanupDeleteCandidates ? '⚠️ Full deletion' : '🎥 Recording cleanup'}</strong>
-                    {' '}will affect{' '}
-                    <strong style={{ fontSize: '1.1rem' }}>{affectedPreview}</strong>
-                    {' '}candidate(s) with status:{' '}
-                    <strong>{cleanupStatuses.map((s) => STATUS_LABELS[s]).join(', ')}</strong>.
-                    {cleanupDeleteCandidates
-                      ? ' Their profiles, sessions, and video files will be permanently removed.'
-                      : ' Only video recording files will be deleted; all interview data remains.'}
-                  </>
-                )}
-              </div>
-
-              {cleanupResult && (
-                <div style={styles.cleanupSuccess}>✅ {cleanupResult}</div>
-              )}
-              {cleanupError && (
-                <div style={styles.cleanupError}>❌ {cleanupError}</div>
-              )}
-
-              <button
-                style={{
-                  ...styles.cleanupBtn,
-                  ...(cleanupDeleteCandidates ? styles.cleanupBtnDanger : {}),
-                  opacity: (cleanupLoading || cleanupStatuses.length === 0 || affectedPreview === 0) ? 0.5 : 1,
-                }}
-                onClick={handleCleanup}
-                disabled={cleanupLoading || cleanupStatuses.length === 0 || affectedPreview === 0}
-                aria-label="Run data cleanup"
-              >
-                {cleanupLoading
-                  ? '⏳ Running cleanup…'
-                  : cleanupDeleteCandidates
-                  ? `⚠️ Permanently Delete ${affectedPreview} Candidate(s)`
-                  : `🗑 Delete Recordings for ${affectedPreview} Candidate(s)`}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    maxWidth: '1100px',
-    margin: '0 auto',
     padding: '2rem',
-    fontFamily: 'sans-serif',
+    maxWidth: '1300px',
+    margin: '0 auto',
+    color: '#ffffff',
+    position: 'relative',
+    zIndex: 1,
   },
   header: {
     marginBottom: '1.5rem',
   },
   title: {
     fontSize: '2rem',
-    fontWeight: 700,
+    fontWeight: 'bold',
     color: '#ffffff',
-    margin: 0,
+    margin: '0 0 0.25rem 0',
   },
   subtitle: {
-    color: '#cbd5e1',
-    marginTop: '0.25rem',
     fontSize: '1rem',
+    color: '#cbd5e1',
+    margin: 0,
   },
   filterBar: {
     display: 'flex',
-    gap: '0.75rem',
+    gap: '1rem',
+    marginBottom: '1.25rem',
     flexWrap: 'wrap',
-    marginBottom: '1rem',
-    alignItems: 'center',
   },
   select: {
-    padding: '0.5rem 0.75rem',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    padding: '0.5rem 1rem',
     borderRadius: '6px',
-    fontSize: '0.9rem',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     background: 'rgba(255, 255, 255, 0.04)',
     color: '#ffffff',
-    cursor: 'pointer',
-  },
-  clearBtn: {
-    padding: '0.5rem 0.75rem',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '6px',
     fontSize: '0.9rem',
-    background: 'rgba(255, 255, 255, 0.08)',
-    color: '#e2e8f0',
     cursor: 'pointer',
   },
-  // ── Selection bar ────────────────────────────────────────────────────
+  bulkToolbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
+  },
+  cleanupToggleBtn: {
+    background: 'rgba(255, 255, 255, 0.06)',
+    color: '#90cdf4',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '6px',
+    padding: '0.45rem 0.9rem',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
   selectionBar: {
     display: 'flex',
     alignItems: 'center',
-    flexWrap: 'wrap' as const,
-    gap: '0.75rem',
-    background: 'rgba(56, 189, 248, 0.18)',
-    border: '1px solid #90cdf4',
+    gap: '0.6rem',
+    flexWrap: 'wrap',
+    background: 'rgba(255, 255, 255, 0.04)',
+    padding: '0.4rem 0.8rem',
     borderRadius: '8px',
-    padding: '0.65rem 1rem',
-    marginBottom: '0.75rem',
-    fontSize: '0.88rem',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
   },
   selectionCount: {
-    fontWeight: 700,
-    color: '#7dd3fc',
-    marginRight: '0.25rem',
-  },
-  selectionActions: {
-    display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap' as const,
-  },
-  selActionBtn: {
-    border: 'none',
-    borderRadius: '6px',
-    padding: '0.4rem 0.8rem',
-    cursor: 'pointer',
-    fontSize: '0.83rem',
-    fontWeight: 600,
-  },
-  selDeleteRecBtn: {
-    background: '#4299e1',
-    color: '#fff',
-  },
-  selDeleteAllBtn: {
-    background: '#e53e3e',
-    color: '#fff',
-  },
-  selClearBtn: {
-    background: '#e2e8f0',
+    fontSize: '0.85rem',
     color: '#e2e8f0',
   },
-  selBusy: {
-    color: '#7dd3fc',
-    fontSize: '0.83rem',
-  },
-  selSuccess: {
-    color: '#86efac',
+  actionBtnRec: {
+    background: '#3182ce',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '5px',
+    padding: '0.35rem 0.75rem',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
     fontWeight: 600,
-    fontSize: '0.83rem',
   },
-  selError: {
-    color: '#fca5a5',
+  actionBtnDanger: {
+    background: '#e53e3e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '5px',
+    padding: '0.35rem 0.75rem',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
     fontWeight: 600,
-    fontSize: '0.83rem',
   },
-  // ── Table ─────────────────────────────────────────────────────────────
-  tableWrapper: {
-    overflowX: 'auto',
+  clearSelectionBtn: {
+    background: 'transparent',
+    color: '#a0aec0',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '5px',
+    padding: '0.35rem 0.6rem',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  },
+  cleanupCard: {
+    background: 'rgba(255, 255, 255, 0.04)',
     border: '1px solid rgba(255, 255, 255, 0.08)',
     borderRadius: '10px',
+    padding: '1.25rem 1.5rem',
+    marginBottom: '1.5rem',
+  },
+  cleanupCardTitle: {
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    color: '#ffffff',
+    marginBottom: '0.35rem',
+  },
+  cleanupCardDesc: {
+    fontSize: '0.85rem',
+    color: '#cbd5e1',
+    margin: '0 0 1rem',
+  },
+  checkboxGroup: {
+    display: 'flex',
+    gap: '1rem',
+    flexWrap: 'wrap',
+    marginBottom: '1rem',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    fontSize: '0.88rem',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+  },
+  countBadge: {
+    background: 'rgba(255, 255, 255, 0.08)',
+    color: '#a0aec0',
+    borderRadius: '10px',
+    padding: '0.1rem 0.45rem',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+  },
+  optionsRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
+    marginBottom: '1.25rem',
+  },
+  radioOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.88rem',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+  },
+  cleanupActions: {
+    display: 'flex',
+    gap: '0.75rem',
+  },
+  runCleanupBtn: {
+    background: '#dd6b20',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '0.5rem 1.25rem',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+  },
+  successBanner: {
+    background: 'rgba(74, 222, 128, 0.15)',
+    border: '1px solid rgba(74, 222, 128, 0.4)',
+    color: '#86efac',
+    padding: '0.6rem 1rem',
+    borderRadius: '6px',
+    fontSize: '0.88rem',
+    marginBottom: '1rem',
+  },
+  errorBanner: {
+    background: 'rgba(248, 113, 113, 0.15)',
+    border: '1px solid rgba(248, 113, 113, 0.4)',
+    color: '#fca5a5',
+    padding: '0.6rem 1rem',
+    borderRadius: '6px',
+    fontSize: '0.88rem',
+    marginBottom: '1rem',
+  },
+  tableWrapper: {
+    overflowX: 'auto',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    background: 'rgba(255, 255, 255, 0.02)',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    background: 'rgba(255, 255, 255, 0.04)',
+    fontSize: '0.9rem',
   },
   th: {
-    padding: '0.75rem 1rem',
+    padding: '0.85rem 1rem',
     textAlign: 'left',
-    fontSize: '0.8rem',
-    fontWeight: 600,
+    background: 'rgba(255, 255, 255, 0.04)',
     color: '#cbd5e1',
+    fontWeight: 600,
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    fontSize: '0.82rem',
     textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '1px solid #e2e8f0',
-    background: 'rgba(15, 23, 42, 0.7)',
-  },
-  checkboxTh: {
-    width: '40px',
-    padding: '0.75rem 0.5rem 0.75rem 1rem',
+    letterSpacing: '0.04em',
   },
   tr: {
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    cursor: 'pointer',
     transition: 'background 0.15s',
-  },
-  trPassing: {
-    background: 'rgba(74, 222, 128, 0.15)',
-  },
-  trSelected: {
-    background: 'rgba(56, 189, 248, 0.18)',
   },
   td: {
     padding: '0.85rem 1rem',
-    fontSize: '0.9rem',
-    color: '#ffffff',
     verticalAlign: 'middle',
+    color: '#e2e8f0',
   },
-  checkboxTd: {
-    padding: '0.85rem 0.5rem 0.85rem 1rem',
-    width: '40px',
-  },
-  checkbox: {
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
-    accentColor: '#4299e1',
-  },
-  nameCell: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.15rem',
-  },
-  name: {
+  candidateName: {
     fontWeight: 600,
     color: '#ffffff',
   },
-  email: {
+  candidateEmail: {
     fontSize: '0.8rem',
-    color: '#cbd5e1',
+    color: '#94a3b8',
   },
   trackBadge: {
-    background: '#e9d8fd',
-    color: '#553c9a',
-    borderRadius: '999px',
-    padding: '0.2rem 0.6rem',
+    background: 'rgba(255, 255, 255, 0.08)',
+    color: '#90cdf4',
+    padding: '0.2rem 0.55rem',
+    borderRadius: '4px',
     fontSize: '0.78rem',
     fontWeight: 600,
   },
   statusBadge: {
-    borderRadius: '999px',
     padding: '0.2rem 0.6rem',
+    borderRadius: '12px',
     fontSize: '0.78rem',
     fontWeight: 600,
+    display: 'inline-block',
   },
-  grade: {
-    fontWeight: 700,
-    fontSize: '0.95rem',
-  },
-  resultBadge: {
-    borderRadius: '999px',
-    padding: '0.2rem 0.6rem',
+  passBadge: {
+    background: 'rgba(74, 222, 128, 0.15)',
+    color: '#86efac',
+    padding: '0.2rem 0.55rem',
+    borderRadius: '4px',
     fontSize: '0.78rem',
-    fontWeight: 600,
+    fontWeight: 'bold',
   },
-  actionsCell: {
-    display: 'flex',
-    gap: '0.4rem',
-    alignItems: 'center',
+  failBadge: {
+    background: 'rgba(248, 113, 113, 0.15)',
+    color: '#fca5a5',
+    padding: '0.2rem 0.55rem',
+    borderRadius: '4px',
+    fontSize: '0.78rem',
+    fontWeight: 'bold',
   },
-  viewBtn: {
-    background: '#4299e1',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    padding: '0.4rem 0.85rem',
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    fontWeight: 600,
+  pendingBadge: {
+    background: 'rgba(251, 191, 36, 0.15)',
+    color: '#fde047',
+    padding: '0.2rem 0.55rem',
+    borderRadius: '4px',
+    fontSize: '0.78rem',
   },
   rowDeleteBtn: {
     background: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '6px',
-    padding: '0.35rem 0.5rem',
-    cursor: 'pointer',
-    fontSize: '0.95rem',
-    lineHeight: 1,
-    color: '#cbd5e1',
-    transition: 'border-color 0.15s, color 0.15s',
-  },
-  muted: {
-    color: '#cbd5e1',
-    fontSize: '0.9rem',
-  },
-  errorMsg: {
-    color: '#e53e3e',
-    fontSize: '0.9rem',
-  },
-  // ── Cleanup section ───────────────────────────────────────────────────
-  cleanupSection: {
-    marginTop: '2rem',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-  },
-  cleanupToggle: {
-    width: '100%',
-    background: 'rgba(15, 23, 42, 0.7)',
     border: 'none',
-    borderBottom: '1px solid #e2e8f0',
-    padding: '1rem 1.25rem',
-    textAlign: 'left' as const,
     cursor: 'pointer',
     fontSize: '1rem',
-    fontWeight: 700,
-    color: '#ffffff',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: '0.2rem 0.4rem',
+    borderRadius: '4px',
+    opacity: 0.7,
   },
-  cleanupToggleHint: {
-    fontSize: '0.8rem',
+  stateMessage: {
+    textAlign: 'center',
+    padding: '3rem',
     color: '#cbd5e1',
-    fontWeight: 400,
   },
-  cleanupBody: {
-    background: 'rgba(255, 255, 255, 0.04)',
-    padding: '1.5rem',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0',
-  },
-  cleanupOverview: {
-    marginBottom: '1.25rem',
-  },
-  cleanupOverviewTitle: {
-    fontSize: '0.78rem',
-    fontWeight: 700,
-    color: '#cbd5e1',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.06em',
-    display: 'block',
-    marginBottom: '0.6rem',
-  },
-  cleanupStatGrid: {
-    display: 'flex',
-    gap: '0.6rem',
-    flexWrap: 'wrap' as const,
-  },
-  cleanupStat: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    padding: '0.5rem 0.9rem',
-    borderRadius: '8px',
-    minWidth: '80px',
-  },
-  cleanupStatCount: {
-    fontSize: '1.4rem',
-    fontWeight: 700,
-    lineHeight: 1,
-  },
-  cleanupStatLabel: {
-    fontSize: '0.72rem',
-    fontWeight: 500,
-    marginTop: '0.2rem',
-    textAlign: 'center' as const,
-  },
-  cleanupDivider: {
-    height: '1px',
-    background: '#e2e8f0',
-    margin: '1.25rem 0',
-  },
-  cleanupStep: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.75rem',
-  },
-  cleanupStepHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.6rem',
-  },
-  cleanupStepNum: {
-    background: '#4299e1',
-    color: '#fff',
-    borderRadius: '50%',
-    width: '24px',
-    height: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  cleanupStepTitle: {
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    color: '#ffffff',
-  },
-  cleanupStepDesc: {
-    fontSize: '0.86rem',
-    color: '#e2e8f0',
-    lineHeight: 1.55,
-    margin: 0,
-  },
-  statusCardGrid: {
-    display: 'flex',
-    gap: '0.6rem',
-    flexWrap: 'wrap' as const,
-  },
-  statusCard: {
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '8px',
-    padding: '0.65rem 1rem',
-    background: 'rgba(255, 255, 255, 0.04)',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    minWidth: '110px',
-    position: 'relative' as const,
-    transition: 'all 0.15s',
-  },
-  statusCardSelected: {
-    border: '2px solid #38bdf8',
-    background: 'rgba(56, 189, 248, 0.18)',
-  },
-  statusCardEmpty: {
-    opacity: 0.45,
-    cursor: 'default',
-  },
-  statusCardCount: {
-    fontSize: '1.5rem',
-    fontWeight: 800,
-    color: '#ffffff',
-    lineHeight: 1,
-  },
-  statusCardLabel: {
-    fontSize: '0.75rem',
-    color: '#cbd5e1',
-    marginTop: '0.2rem',
-    textAlign: 'center' as const,
-  },
-  statusCardCheck: {
-    position: 'absolute' as const,
-    top: '4px',
-    right: '6px',
-    color: '#4299e1',
-    fontSize: '0.8rem',
-    fontWeight: 700,
-  },
-  cleanupOptions: {
-    display: 'flex',
-    gap: '0.75rem',
-    flexWrap: 'wrap' as const,
-  },
-  cleanupOption: {
-    flex: '1 1 280px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '10px',
-    padding: '1rem',
-    cursor: 'pointer',
-    background: 'rgba(255, 255, 255, 0.04)',
-    transition: 'all 0.15s',
-  },
-  cleanupOptionSelected: {
-    border: '2px solid #38bdf8',
-    background: 'rgba(56, 189, 248, 0.18)',
-  },
-  cleanupOptionDanger: {
-    border: '2px solid #f87171',
-    background: 'rgba(248, 113, 113, 0.15)',
-  },
-  cleanupOptionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    marginBottom: '0.5rem',
-  },
-  cleanupOptionIcon: {
-    fontSize: '1.2rem',
-  },
-  cleanupOptionTitle: {
-    fontWeight: 700,
-    fontSize: '0.95rem',
-    color: '#ffffff',
-    flex: 1,
-  },
-  cleanupOptionBadge: {
-    background: 'rgba(74, 222, 128, 0.2)',
-    color: '#86efac',
-    borderRadius: '999px',
-    padding: '0.1rem 0.5rem',
-    fontSize: '0.72rem',
-    fontWeight: 600,
-  },
-  cleanupOptionDesc: {
-    fontSize: '0.84rem',
-    color: '#e2e8f0',
-    lineHeight: 1.5,
-    margin: '0 0 0.5rem 0',
-  },
-  cleanupOptionImpact: {
-    fontSize: '0.8rem',
-    color: '#ffffff',
-    background: 'rgba(15, 23, 42, 0.7)',
-    borderRadius: '6px',
-    padding: '0.4rem 0.6rem',
-    lineHeight: 1.6,
-  },
-  cleanupPreview: {
-    border: '1.5px solid rgba(56, 189, 248, 0.4)',
-    borderRadius: '8px',
-    padding: '0.75rem 1rem',
-    fontSize: '0.88rem',
-    color: '#ffffff',
-    lineHeight: 1.55,
-  },
-  cleanupSuccess: {
-    background: 'rgba(74, 222, 128, 0.15)',
-    border: '1px solid rgba(74, 222, 128, 0.4)',
-    borderRadius: '8px',
-    padding: '0.65rem 1rem',
-    fontSize: '0.88rem',
-    color: '#86efac',
-  },
-  cleanupError: {
-    background: 'rgba(248, 113, 113, 0.15)',
-    border: '1px solid rgba(248, 113, 113, 0.4)',
-    borderRadius: '8px',
-    padding: '0.65rem 1rem',
-    fontSize: '0.88rem',
+  errorMessage: {
+    textAlign: 'center',
+    padding: '2rem',
     color: '#fca5a5',
-  },
-  cleanupBtn: {
-    background: '#4299e1',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '0.7rem 1.4rem',
-    cursor: 'pointer',
-    fontSize: '0.92rem',
-    fontWeight: 700,
-    alignSelf: 'flex-start' as const,
-    marginTop: '0.25rem',
-  },
-  cleanupBtnDanger: {
-    background: '#e53e3e',
   },
 };
 

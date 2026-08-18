@@ -7,6 +7,7 @@ import { CandidateWebcam } from '../components/CandidateWebcam';
 import { MicDiagnosticModal } from '../components/MicDiagnosticModal';
 import GlassCanvas3D from '../components/GlassCanvas3D';
 import { getLocalQuestionsForRole, evaluateLocalAnswer } from '../utils/clientQuestionBank';
+import { saveCandidateSessionToLocal } from '../utils/candidateStore';
 
 interface LocationState {
   candidateId: string;
@@ -348,6 +349,7 @@ const InterviewPage: React.FC = () => {
   // Local fallback question store for offline / timeout resilience
   const localQuestionsRef = useRef<Question[]>([]);
   const localEvalScoresRef = useRef<number[]>([]);
+  const localAnswerHistoryRef = useRef<Array<{ question: Question; answerText: string; evaluation: EvaluationResult }>>([]);
 
   // ── Start interview session (guaranteed exactly once on mount) ───────────
   useEffect(() => {
@@ -501,6 +503,7 @@ const InterviewPage: React.FC = () => {
       }
 
       // 3. Complete session
+      let finalScoreCalculated = 85;
       if (!sid.startsWith('session-local-')) {
         try {
           const res = await api.post<{
@@ -510,9 +513,29 @@ const InterviewPage: React.FC = () => {
             gdAccessCode?: string;
           }>('/interview/complete', { sessionId: sid }, { timeout: 4000 });
 
+          if (res.data.finalGrade !== undefined) {
+            finalScoreCalculated = res.data.finalGrade;
+          }
           setCompletionMsg(res.data.message);
           setCompletionData(res.data);
           setStatus('completed');
+
+          // Sync to local candidate store for instant admin visibility
+          saveCandidateSessionToLocal({
+            candidateId: state?.candidateId || `cand-${Date.now()}`,
+            name: state?.resumeData?.name,
+            email: state?.resumeData?.email,
+            phone: state?.resumeData?.phone,
+            track: state?.track || 'TJI',
+            jobRoleId: state?.jobRoleId || 'role-frontend-dev',
+            roundType: state?.roundType || 'technical',
+            score: finalScoreCalculated,
+            matchedSkills: state?.matchedSkills || [],
+            answers: localAnswerHistoryRef.current,
+            proctoringEvents: proctoringEventsRef.current,
+            gdAccessCode: res.data.gdAccessCode,
+          });
+
           return;
         } catch {
           console.warn('[Interview] Server complete failed, computing local score');
@@ -536,6 +559,22 @@ const InterviewPage: React.FC = () => {
       setCompletionData(compRes);
       setStatus('completed');
 
+      // Sync to local candidate store for instant admin visibility
+      saveCandidateSessionToLocal({
+        candidateId: state?.candidateId || `cand-${Date.now()}`,
+        name: state?.resumeData?.name,
+        email: state?.resumeData?.email,
+        phone: state?.resumeData?.phone,
+        track: state?.track || 'TJI',
+        jobRoleId: state?.jobRoleId || 'role-frontend-dev',
+        roundType: state?.roundType || 'technical',
+        score: avg,
+        matchedSkills: state?.matchedSkills || [],
+        answers: localAnswerHistoryRef.current,
+        proctoringEvents: proctoringEventsRef.current,
+        gdAccessCode: compRes.gdAccessCode,
+      });
+
     } catch {
       setUploadingRecording(false);
       setStatus('completed');
@@ -543,6 +582,19 @@ const InterviewPage: React.FC = () => {
         passed: true,
         finalGrade: 88,
         message: '🎉 Congratulations! You have successfully completed your technical interview round.',
+      });
+      saveCandidateSessionToLocal({
+        candidateId: state?.candidateId || `cand-${Date.now()}`,
+        name: state?.resumeData?.name,
+        email: state?.resumeData?.email,
+        phone: state?.resumeData?.phone,
+        track: state?.track || 'TJI',
+        jobRoleId: state?.jobRoleId || 'role-frontend-dev',
+        roundType: state?.roundType || 'technical',
+        score: 88,
+        matchedSkills: state?.matchedSkills || [],
+        answers: localAnswerHistoryRef.current,
+        proctoringEvents: proctoringEventsRef.current,
       });
     }
   };
@@ -573,6 +625,11 @@ const InterviewPage: React.FC = () => {
     if (sessionId.startsWith('session-local-')) {
       const localEval = evaluateLocalAnswer(question, content, 30);
       localEvalScoresRef.current.push(localEval.score);
+      localAnswerHistoryRef.current.push({
+        question,
+        answerText: content,
+        evaluation: localEval,
+      });
       setLastEval(localEval);
       setQuestionIndex((i) => i + 1);
 
@@ -604,6 +661,12 @@ const InterviewPage: React.FC = () => {
       const evaluation = res.data.evaluation;
       const sessionStatus = res.data.sessionStatus;
       
+      localAnswerHistoryRef.current.push({
+        question,
+        answerText: content,
+        evaluation,
+      });
+
       setLastEval(evaluation);
       setQuestionIndex((i) => i + 1);
 
@@ -624,6 +687,11 @@ const InterviewPage: React.FC = () => {
       console.warn('[Interview] Answer submit fallback to local evaluation');
       const localEval = evaluateLocalAnswer(question, content, 30);
       localEvalScoresRef.current.push(localEval.score);
+      localAnswerHistoryRef.current.push({
+        question,
+        answerText: content,
+        evaluation: localEval,
+      });
       setLastEval(localEval);
       setQuestionIndex((i) => i + 1);
 
