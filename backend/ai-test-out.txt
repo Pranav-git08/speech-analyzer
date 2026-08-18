@@ -1,0 +1,43 @@
+﻿npx : PASS src/__tests__/ai-analysis.property.test.ts 
+(5.625 s)
+At line:1 char:1
++ npx jest --testPathPattern="ai-analysis" --runInBand 
+2>&1 | Out-File  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/__te 
+   st...st.ts (5.625 s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  AI Analysis Service ΓÇô Property 13: Filler word 
+detection accuracy
+    ΓêÜ count equals the number of filler words injected 
+into a clean sentence (40 ms)
+    ΓêÜ returns count 0 for text with no filler words (28 
+ms)
+    ΓêÜ returns count 0 for empty or whitespace-only text 
+(7 ms)
+    ΓêÜ count and words array length are always consistent 
+(9 ms)
+  AI Analysis Service ΓÇô Property 14: Confidence score 
+monotonicity
+    ΓêÜ higher composure state produces >= confidence 
+score than lower state (same filler count) (10 ms)
+    ΓêÜ fewer filler words produce >= confidence score 
+than more filler words (same composure) (5 ms)
+    ΓêÜ confidence score is always in [0, 100] (16 ms)
+    ΓêÜ zero filler words produces the maximum score for a 
+given composure state (9 ms)
+  AI Analysis Service ΓÇô Property 12: Composure 
+classification validity
+    ΓêÜ analyseFacialExpression always returns a valid 
+composure state (11 ms)
+    ΓêÜ isValidComposureState returns true for all valid 
+states (1 ms)
+    ΓêÜ isValidComposureState returns false for arbitrary 
+invalid strings (8 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        5.941 s
+Ran all test suites matching /ai-analysis/i.

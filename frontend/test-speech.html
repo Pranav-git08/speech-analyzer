@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Speech Recognition Test</title>
+</head>
+<body>
+    <h1>Speech Recognition Test</h1>
+    <button id="start">Start Recording</button>
+    <button id="stop" disabled>Stop Recording</button>
+    <div id="status"></div>
+    <div id="transcript"></div>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const status = document.getElementById('status');
+        const transcript = document.getElementById('transcript');
+        const startBtn = document.getElementById('start');
+        const stopBtn = document.getElementById('stop');
+
+        if (!SpeechRecognition) {
+            status.innerHTML = '<p style="color:red">❌ Speech Recognition NOT supported in this browser!</p><p>Please use Chrome or Edge</p>';
+        } else {
+            status.innerHTML = '<p style="color:green">✅ Speech Recognition is supported!</p>';
+            
+            let recognition = null;
+            let finalTranscript = '';
+
+            startBtn.onclick = () => {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onstart = () => {
+                    status.innerHTML = '<p style="color:blue">🎤 Listening... Speak now!</p>';
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    finalTranscript = '';
+                };
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcriptPart = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcriptPart + ' ';
+                        } else {
+                            interimTranscript += transcriptPart;
+                        }
+                    }
+                    transcript.innerHTML = `
+                        <div style="background:#e8f5e9; padding:10px; margin:10px 0; border-radius:5px">
+                            <strong>Final:</strong> ${finalTranscript}
+                        </div>
+                        <div style="background:#fff3e0; padding:10px; border-radius:5px">
+                            <strong>Interim:</strong> ${interimTranscript}
+                        </div>
+                    `;
+                };
+
+                recognition.onerror = (event) => {
+                    status.innerHTML = `<p style="color:red">❌ Error: ${event.error}</p>`;
+                    console.error('Speech recognition error:', event);
+                };
+
+                recognition.onend = () => {
+                    status.innerHTML = '<p style="color:gray">⏹ Stopped</p>';
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                };
+
+                recognition.start();
+            };
+
+            stopBtn.onclick = () => {
+                if (recognition) {
+                    recognition.stop();
+                }
+            };
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+build/
+*/build/
+coverage/
+*/coverage/
+.env
+*/.env
+*.log
+*/.system_generated/
+.DS_Store
+Thumbs.db

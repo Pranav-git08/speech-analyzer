@@ -1,0 +1,29 @@
+{
+  "name": "speech-analyzer-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@ricky0123/vad-web": "^0.0.30",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "axios": "^1.6.3",
+    "framer-motion": "^13.1.0",
+    "gsap": "^3.15.0",
+    "hls.js": "^1.7.0",
+    "lucide-react": "^1.32.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.1",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  }
+}
