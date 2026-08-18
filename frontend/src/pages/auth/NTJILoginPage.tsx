@@ -59,7 +59,6 @@ export const NTJILoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [parsedSkills, setParsedSkills] = useState<string[]>([]);
-  const [rawText, setRawText] = useState('');
   const [customSkill, setCustomSkill] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
@@ -93,7 +92,6 @@ export const NTJILoginPage: React.FC = () => {
 
     // High-precision client-side extraction using PDF.js
     const extracted = await extractResumeData(chosen);
-    setRawText(extracted.text);
     setName(extracted.name);
     setEmail(extracted.email);
     setPhone(extracted.phone);
@@ -119,27 +117,21 @@ export const NTJILoginPage: React.FC = () => {
     } catch (err: any) {
       console.warn('Preview parse fallback:', err);
     } finally {
-      if (discoveredSkills.length === 0 && selectedRole) {
-        discoveredSkills = [...selectedRole.requiredSkills];
-      }
       setParsedSkills([...new Set(discoveredSkills)]);
       setIsParsing(false);
     }
   };
 
-  // ── Strict Skill Match & Eligibility Calculation ───────────────────────────
+  // ── Strict Skill Match & Eligibility Calculation (Zero false positives) ─────
   const requiredSkills = selectedRole?.requiredSkills || [];
   
   const matchedSkills = requiredSkills.filter((req) => {
     const reqLower = req.toLowerCase().trim();
     const synonyms = NON_TECH_SYNONYMS[reqLower] || [reqLower];
-    const inParsed = parsedSkills.some((p) => {
+    return parsedSkills.some((p) => {
       const pLower = p.toLowerCase().trim();
       return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
     });
-    if (inParsed) return true;
-    const lowerRaw = rawText.toLowerCase();
-    return synonyms.some((syn) => lowerRaw.includes(syn.toLowerCase()));
   });
 
   const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));
