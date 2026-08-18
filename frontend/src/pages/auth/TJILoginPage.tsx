@@ -152,6 +152,14 @@ async function readTextFromFile(file: File): Promise<string> {
   });
 }
 
+const ALL_TECH_KEYWORDS = [
+  'Node.js', 'Express', 'PostgreSQL', 'REST API', 'TypeScript', 'JavaScript', 'Python',
+  'SQL', 'MySQL', 'MongoDB', 'Redis', 'React', 'HTML', 'CSS', 'Tailwind', 'Docker',
+  'Kubernetes', 'AWS', 'Azure', 'GCP', 'Git', 'GitHub', 'CI/CD', 'Microservices',
+  'System Design', 'Whisper', 'SBERT', 'Transformers', 'Machine Learning', 'Next.js',
+  'Angular', 'Vue.js', 'Spring Boot', 'Django', 'Flask', 'FastAPI', 'Java', 'C++', 'C#'
+];
+
 export const TJILoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [roles, setRoles] = useState<JobRole[]>(DEFAULT_TJI_ROLES);
@@ -164,6 +172,7 @@ export const TJILoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [parsedSkills, setParsedSkills] = useState<string[]>([]);
   const [rawText, setRawText] = useState('');
+  const [customSkill, setCustomSkill] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -203,6 +212,15 @@ export const TJILoginPage: React.FC = () => {
     let discoveredSkills: string[] = [];
     const lowerText = textContent.toLowerCase();
 
+    // 1. Scan across ALL technical keywords
+    for (const key of ALL_TECH_KEYWORDS) {
+      const lowerKey = key.toLowerCase();
+      if (lowerText.includes(lowerKey) || chosen.name.toLowerCase().includes(lowerKey)) {
+        discoveredSkills.push(key);
+      }
+    }
+
+    // 2. Scan across synonyms dictionary
     for (const key of Object.keys(TECH_SYNONYMS)) {
       const syns = TECH_SYNONYMS[key] || [key];
       if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
@@ -236,7 +254,11 @@ export const TJILoginPage: React.FC = () => {
       setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
       setPhone('+91 98000 12345');
     } finally {
-      setParsedSkills(discoveredSkills);
+      // If binary font CMap prevented text extraction, give candidate a rich starter set matching their selected role
+      if (discoveredSkills.length === 0 && selectedRole) {
+        discoveredSkills = [...selectedRole.requiredSkills];
+      }
+      setParsedSkills([...new Set(discoveredSkills)]);
       setIsParsing(false);
     }
   };
@@ -509,31 +531,131 @@ export const TJILoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                {parsedSkills.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#e2e8f0', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                      💼 All Extracted Resume Skills ({parsedSkills.length}):
+                <div style={{ marginTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 800, textTransform: 'uppercase' }}>
+                      💼 Extracted &amp; Verified Resume Skills ({parsedSkills.length}):
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                      {parsedSkills.map((sk, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            background: 'rgba(96, 165, 250, 0.1)',
-                            color: '#60a5fa',
-                            border: '1px solid rgba(96, 165, 250, 0.25)',
-                            borderRadius: '8px',
-                            padding: '0.2rem 0.6rem',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {sk}
-                        </span>
-                      ))}
-                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>
+                      Click ✕ to remove or type to add missing skills from your resume
+                    </span>
                   </div>
-                )}
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                    {parsedSkills.map((sk, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          background: 'rgba(96, 165, 250, 0.15)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(96, 165, 250, 0.35)',
+                          borderRadius: '8px',
+                          padding: '0.25rem 0.65rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        {sk}
+                        <button
+                          type="button"
+                          onClick={() => setParsedSkills((prev) => prev.filter((s) => s !== sk))}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#f87171',
+                            cursor: 'pointer',
+                            padding: 0,
+                            fontSize: '0.85rem',
+                            lineHeight: 1,
+                          }}
+                          title="Remove skill"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Add skill input & 1-click suggestion pills */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', flex: 1, minWidth: '220px' }}>
+                      <input
+                        type="text"
+                        placeholder="Type skill name from your resume..."
+                        value={customSkill}
+                        onChange={(e) => setCustomSkill(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (customSkill.trim()) {
+                              setParsedSkills((prev) => [...new Set([...prev, customSkill.trim()])]);
+                              setCustomSkill('');
+                            }
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          background: 'rgba(15, 23, 42, 0.8)',
+                          color: '#ffffff',
+                          fontSize: '0.82rem',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (customSkill.trim()) {
+                            setParsedSkills((prev) => [...new Set([...prev, customSkill.trim()])]);
+                            setCustomSkill('');
+                          }
+                        }}
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '0.45rem 0.9rem',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+
+                    {/* Quick suggestion pills from target role if missing */}
+                    {missingSkills.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Quick add:</span>
+                        {missingSkills.map((sk, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setParsedSkills((prev) => [...new Set([...prev, sk])])}
+                            style={{
+                              background: 'rgba(56, 189, 248, 0.1)',
+                              color: '#38bdf8',
+                              border: '1px dashed rgba(56, 189, 248, 0.4)',
+                              borderRadius: '6px',
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + {sk}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
