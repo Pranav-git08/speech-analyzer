@@ -1,9 +1,12 @@
 import axios from 'axios';
 
+const baseURL = ((import.meta as any).env && (import.meta as any).env.VITE_API_URL)
+  ? (import.meta as any).env.VITE_API_URL
+  : '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 30000, // 30-second timeout for cloud AI/resume requests
+  baseURL,
+  timeout: 30000,
 });
 
 export default api;
-
