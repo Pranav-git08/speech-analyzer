@@ -348,17 +348,19 @@ const InterviewPage: React.FC = () => {
 
   // Local fallback question store for offline / timeout resilience
   const localQuestionsRef = useRef<Question[]>([]);
+  const currentQuestionIndexRef = useRef(0);
+  const lastSpokenQuestionIdRef = useRef<string | null>(null);
   const localEvalScoresRef = useRef<number[]>([]);
   const localAnswerHistoryRef = useRef<Array<{ question: Question; answerText: string; evaluation: EvaluationResult }>>([]);
 
-  // ── Start interview session (guaranteed exactly once on mount) ───────────
+  // ── Start interview session (guaranteed instant startup on mount) ─────────
   useEffect(() => {
     if (!state || sessionStartedRef.current) return;
     sessionStartedRef.current = true;
 
     console.log(`[Interview] Starting ${state.roundType} round in ${selectedLanguage} (track: ${state.track})`);
 
-    // Prepare local questions in advance for instantaneous fallback
+    // Prepare local questions in advance for instantaneous 0ms start
     const localSet = getLocalQuestionsForRole(
       state.jobRoleId,
       state.matchedSkills,
@@ -366,58 +368,51 @@ const InterviewPage: React.FC = () => {
       5
     );
     localQuestionsRef.current = localSet;
+    currentQuestionIndexRef.current = 0;
 
-    // Fast-race server start with local fallback to prevent 30s timeouts
-    const startServerSession = api.post<{ sessionId: string }>('/interview/start', {
+    // Immediately start session with zero delay
+    const initialSid = `session-local-${Date.now()}`;
+    setSessionId(initialSid);
+    setStatus('in_progress');
+    if (localSet.length > 0) {
+      setQuestion(localSet[0]);
+    }
+
+    // In background, register session on server if online
+    api.post<{ sessionId: string }>('/interview/start', {
       candidateId: state.candidateId,
       jobRoleId: state.jobRoleId,
       roundType: state.roundType,
       language: selectedLanguage,
       matchedSkills: state.matchedSkills,
-    }, { timeout: 4000 });
-
-    startServerSession
+    }, { timeout: 3000 })
       .then(async (res) => {
-        setSessionId(res.data.sessionId);
-        setStatus('in_progress');
-
         try {
           const sRes = await api.post<{ streamId: string }>('/admin/recording/stream/start', { 
             sessionId: res.data.sessionId 
-          }, { timeout: 3000 });
+          }, { timeout: 2000 });
           if (streamRef.current) {
             startRecordingStream(streamRef.current, sRes.data.streamId);
           } else {
             streamIdRef.current = sRes.data.streamId;
           }
-        } catch (err) {
-          console.warn('[Session Recording] Recording stream skipped in fallback mode:', err);
+        } catch {
+          // stream recording optional
         }
       })
-      .catch((err: any) => {
-        console.warn('[Interview] Server start timed out or unreachable, running in client-resilient AI mode:', err);
-        const fallbackSid = `session-local-${Date.now()}`;
-        setSessionId(fallbackSid);
-        setStatus('in_progress');
-        if (localSet.length > 0) {
-          setQuestion(localSet[0]);
-        }
+      .catch(() => {
+        console.log('[Interview] Running in resilient client AI mode');
       });
   }, [state, startRecordingStream, selectedLanguage]);
 
-  // ── Fetch first question once session is active ────────────────────────────
-  useEffect(() => {
-    if (status === 'in_progress' && sessionId) {
-      fetchNextQuestion(sessionId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, sessionId]);
-
-  // ── TTS: Read question aloud for all oral questions ──────────────────────
+  // ── TTS: Read question aloud for all oral questions exactly once ────────
   useEffect(() => {
     if (!question || !state) return;
     if (question.type === 'oral') {
-      speakQuestion(question.text);
+      if (lastSpokenQuestionIdRef.current !== question.id) {
+        lastSpokenQuestionIdRef.current = question.id;
+        speakQuestion(question.text);
+      }
     }
     return () => {
       window.speechSynthesis?.cancel();
@@ -428,7 +423,7 @@ const InterviewPage: React.FC = () => {
   const fetchNextQuestion = useCallback(async (sid: string) => {
     // If running in local session or server unreachable
     if (sid.startsWith('session-local-')) {
-      const idx = questionIndex;
+      const idx = currentQuestionIndexRef.current;
       if (idx < localQuestionsRef.current.length) {
         setQuestion(localQuestionsRef.current[idx]);
         setTextAnswer('');
@@ -631,13 +626,28 @@ const InterviewPage: React.FC = () => {
         evaluation: localEval,
       });
       setLastEval(localEval);
-      setQuestionIndex((i) => i + 1);
 
       setTimeout(async () => {
         setLastEval(null);
         setAiHint('');
-        await fetchNextQuestion(sessionId);
-        setSubmitting(false);
+        currentQuestionIndexRef.current += 1;
+        const nextIdx = currentQuestionIndexRef.current;
+        setQuestionIndex(nextIdx);
+
+        if (nextIdx < localQuestionsRef.current.length) {
+          const nextQ = localQuestionsRef.current[nextIdx];
+          setQuestion(nextQ);
+          setTextAnswer('');
+          setAudioBlob(null);
+          setTranscribedText('');
+          transcribedTextRef.current = '';
+          finalTranscriptRef.current = '';
+          setIsTranscribing(false);
+          setSubmitting(false);
+        } else {
+          await finishSession(sessionId);
+          setSubmitting(false);
+        }
       }, 1800);
       return;
     }
