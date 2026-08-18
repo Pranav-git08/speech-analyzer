@@ -40,6 +40,135 @@ export interface StoredCandidateRecord {
   }>;
 }
 
+const DEFAULT_SEEDS: StoredCandidateRecord[] = [
+  {
+    id: 'cand-pranav-01',
+    name: 'Srinivas Pranav Vaidyam',
+    email: 'pranavvaidyam08@gmail.com',
+    phone: '+91 95910 50952',
+    track: 'TJI',
+    jobRoleId: 'role-frontend-dev',
+    jobRoleName: 'Frontend Developer',
+    uniqueCode: 'APP-4821',
+    status: 'pending_gd',
+    overallGrade: 88,
+    isPassing: true,
+    gdCode: 'GD-849201',
+    skills: ['HTML', 'CSS', 'JavaScript', 'React', 'TypeScript', 'Tailwind CSS'],
+    createdAt: new Date().toISOString(),
+    answers: [
+      {
+        questionId: 'q-fe-1',
+        questionText: 'What are semantic HTML tags and why are they important for accessibility and SEO?',
+        skill: 'HTML',
+        type: 'oral',
+        content: 'Semantic HTML tags clearly describe their meaning to both the browser and the developer. Elements like header, nav, main, article, and footer structure web documents cleanly for screen readers and SEO indexers.',
+        score: 90,
+        grade: 'pass',
+        feedback: 'Excellent explanation of semantic document structure, accessibility benefits, and search engine optimization.',
+        matchedKeywords: ['semantic', 'accessibility', 'seo', 'header', 'nav', 'main', 'footer'],
+      },
+      {
+        questionId: 'q-fe-4',
+        questionText: 'Explain the React Component Lifecycle and how the useEffect hook handles mounting, updating, and unmounting.',
+        skill: 'React',
+        type: 'oral',
+        content: 'React components mount, update with new props or state, and unmount. useEffect handles these phases with dependency arrays and return cleanup functions.',
+        score: 86,
+        grade: 'pass',
+        feedback: 'Accurate and concise explanation of component lifecycle and cleanup handling.',
+        matchedKeywords: ['useeffect', 'component', 'mounting', 'unmounting', 'dependencies', 'cleanup'],
+      },
+    ],
+    proctoringEvents: [
+      {
+        id: 'proc-1',
+        timestamp: new Date().toISOString(),
+        type: 'face_centered',
+        severity: 'low',
+        details: 'Candidate maintained excellent center eye contact throughout evaluation.',
+      },
+    ],
+  },
+  {
+    id: 'cand-vishal-02',
+    name: 'Vishal Tore',
+    email: 'vishal.tore@devmail.com',
+    phone: '+91 98201 44321',
+    track: 'TJI',
+    jobRoleId: 'role-backend-dev',
+    jobRoleName: 'Backend Developer',
+    uniqueCode: 'APP-5190',
+    status: 'approved',
+    overallGrade: 92,
+    isPassing: true,
+    gdCode: 'GD-912048',
+    skills: ['Node.js', 'Express.js', 'PostgreSQL', 'REST API', 'Redis', 'TypeScript'],
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    answers: [
+      {
+        questionId: 'q-be-1',
+        questionText: 'What is the event loop in Node.js and how does it handle non-blocking asynchronous I/O operations?',
+        skill: 'Node.js',
+        type: 'oral',
+        content: 'The event loop allows Node.js to perform non-blocking asynchronous operations by offloading tasks to the OS kernel and libuv thread pool with microtask and macrotask queues.',
+        score: 95,
+        grade: 'pass',
+        feedback: 'In-depth mastery of libuv threading, asynchronous dispatch, and non-blocking I/O.',
+        matchedKeywords: ['event loop', 'non-blocking', 'asynchronous', 'libuv', 'callback queue'],
+      },
+    ],
+    proctoringEvents: [],
+  },
+  {
+    id: 'cand-ranjana-03',
+    name: 'Ranjana Mane',
+    email: 'ranjana.mane@techvision.com',
+    phone: '+91 97654 32109',
+    track: 'NTJI',
+    jobRoleId: 'role-sales',
+    jobRoleName: 'Senior Sales Executive',
+    uniqueCode: 'APP-3042',
+    status: 'pending_hr',
+    overallGrade: 85,
+    isPassing: true,
+    skills: ['Sales', 'CRM', 'Negotiation', 'BANT', 'Client Acquisition', 'Communication'],
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    answers: [
+      {
+        questionId: 'q-sales-1',
+        questionText: 'Walk me through your end-to-end sales prospecting and qualification framework (such as BANT).',
+        skill: 'Sales',
+        type: 'oral',
+        content: 'I qualify leads using BANT—Budget, Authority, Need, and Timeline—to prioritize high-intent prospects and maintain a healthy sales pipeline.',
+        score: 85,
+        grade: 'pass',
+        feedback: 'Solid articulation of enterprise sales qualification and deal progression.',
+        matchedKeywords: ['bant', 'budget', 'authority', 'need', 'timeline', 'qualification'],
+      },
+    ],
+    proctoringEvents: [],
+  },
+];
+
+function getStoredRecords(): StoredCandidateRecord[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
+      return DEFAULT_SEEDS;
+    }
+    const parsed: StoredCandidateRecord[] = JSON.parse(raw);
+    if (parsed.length === 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
+      return DEFAULT_SEEDS;
+    }
+    return parsed;
+  } catch {
+    return DEFAULT_SEEDS;
+  }
+}
+
 export function saveCandidateSessionToLocal(data: {
   candidateId: string;
   name?: string;
@@ -60,9 +189,7 @@ export function saveCandidateSessionToLocal(data: {
   gdAccessCode?: string;
 }): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const list: StoredCandidateRecord[] = raw ? JSON.parse(raw) : [];
-
+    const list: StoredCandidateRecord[] = getStoredRecords();
     const existingIdx = list.findIndex((c) => c.id === data.candidateId);
 
     let roleName = data.jobRoleName;
@@ -70,7 +197,7 @@ export function saveCandidateSessionToLocal(data: {
       if (data.jobRoleId.includes('frontend')) roleName = 'Frontend Developer';
       else if (data.jobRoleId.includes('backend')) roleName = 'Backend Developer';
       else if (data.jobRoleId.includes('fullstack')) roleName = 'Full Stack Developer';
-      else if (data.jobRoleId.includes('sales')) roleName = 'Sales Executive';
+      else if (data.jobRoleId.includes('sales')) roleName = 'Senior Sales Executive';
       else if (data.jobRoleId.includes('hr')) roleName = 'HR Executive';
       else if (data.jobRoleId.includes('marketing')) roleName = 'Marketing Executive';
       else roleName = 'Software Engineer';
@@ -127,9 +254,7 @@ export function saveCandidateSessionToLocal(data: {
 
 export function getLocalCandidateSummaries(): CandidateSummary[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const list: StoredCandidateRecord[] = JSON.parse(raw);
+    const list: StoredCandidateRecord[] = getStoredRecords();
 
     return list.map((c) => ({
       id: c.id,
@@ -153,9 +278,7 @@ export function getLocalCandidateSummaries(): CandidateSummary[] {
 
 export function getLocalCandidateDetail(id: string): CandidateDetail | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const list: StoredCandidateRecord[] = JSON.parse(raw);
+    const list: StoredCandidateRecord[] = getStoredRecords();
     const found = list.find((c) => c.id === id);
     if (!found) return null;
 
@@ -301,9 +424,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
 
 export function updateLocalCandidateStatus(id: string, newStatus: CandidateStatus): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const list: StoredCandidateRecord[] = JSON.parse(raw);
+    const list: StoredCandidateRecord[] = getStoredRecords();
     const idx = list.findIndex((c) => c.id === id);
     if (idx >= 0) {
       list[idx].status = newStatus;
@@ -316,9 +437,7 @@ export function updateLocalCandidateStatus(id: string, newStatus: CandidateStatu
 
 export function deleteLocalCandidate(id: string): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    let list: StoredCandidateRecord[] = JSON.parse(raw);
+    let list: StoredCandidateRecord[] = getStoredRecords();
     list = list.filter((c) => c.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   } catch (err) {
