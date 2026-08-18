@@ -34,11 +34,14 @@ const App: React.FC = () => {
         <Route path="/hr" element={<HRLoginPage />} />
         <Route path="/hr-round" element={<HRLoginPage />} />
         <Route path="/login/admin" element={<AdminLoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminCandidateListPage />} />
+        <Route path="/admin/candidates" element={<AdminCandidateListPage />} />
+        <Route path="/candidates" element={<AdminCandidateListPage />} />
         <Route path="/admin/candidate/:id" element={<AdminCandidateDetailPage />} />
+        <Route path="/admin/candidates/:id" element={<AdminCandidateDetailPage />} />
         <Route path="/roles" element={<RoleSelectionPage />} />
         <Route path="/interview" element={<InterviewPage />} />
+        <Route path="*" element={<LandingPage />} />
       </Routes>
     </BrowserRouter>
   );
