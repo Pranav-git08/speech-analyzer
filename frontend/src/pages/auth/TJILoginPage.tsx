@@ -48,14 +48,13 @@ const TECH_SYNONYMS: Record<string, string[]> = {
 async function readTextFromFile(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       try {
         const buffer = reader.result as ArrayBuffer;
         const bytes = new Uint8Array(buffer);
         const textDecoder = new TextDecoder('utf-8', { fatal: false });
-        let text = textDecoder.decode(bytes);
+        const decoded = textDecoder.decode(bytes);
 
-        // 1. Extract all printable ASCII/UTF-8 characters
         let printable = '';
         for (let i = 0; i < bytes.length; i++) {
           const b = bytes[i];
@@ -66,88 +65,13 @@ async function readTextFromFile(file: File): Promise<string> {
           }
         }
 
-        // 2. Decompress PDF streams using browser native DecompressionStream if available
-        let decompressedText = '';
-        if (typeof DecompressionStream !== 'undefined') {
-          let searchIdx = 0;
-          while (searchIdx < bytes.length) {
-            let streamStart = -1;
-            for (let i = searchIdx; i <= bytes.length - 6; i++) {
-              if (
-                bytes[i] === 115 && // 's'
-                bytes[i + 1] === 116 && // 't'
-                bytes[i + 2] === 114 && // 'r'
-                bytes[i + 3] === 101 && // 'e'
-                bytes[i + 4] === 97 && // 'a'
-                bytes[i + 5] === 109 // 'm'
-              ) {
-                streamStart = i + 6;
-                break;
-              }
-            }
-            if (streamStart === -1) break;
-
-            while (streamStart < bytes.length && (bytes[streamStart] === 10 || bytes[streamStart] === 13 || bytes[streamStart] === 32)) {
-              streamStart++;
-            }
-
-            let streamEndPos = -1;
-            for (let i = streamStart; i <= bytes.length - 9; i++) {
-              if (
-                bytes[i] === 101 && // 'e'
-                bytes[i + 1] === 110 && // 'n'
-                bytes[i + 2] === 100 && // 'd'
-                bytes[i + 3] === 115 && // 's'
-                bytes[i + 4] === 116 && // 't'
-                bytes[i + 5] === 114 && // 'r'
-                bytes[i + 6] === 101 && // 'e'
-                bytes[i + 7] === 97 && // 'a'
-                bytes[i + 8] === 109 // 'm'
-              ) {
-                streamEndPos = i;
-                break;
-              }
-            }
-            if (streamEndPos === -1) break;
-
-            const streamChunk = bytes.slice(streamStart, streamEndPos);
-            searchIdx = streamEndPos + 9;
-
-            if (streamChunk.length > 4) {
-              try {
-                const ds = new DecompressionStream('deflate-raw');
-                const writer = ds.writable.getWriter();
-                writer.write(streamChunk);
-                writer.close();
-                const res = new Response(ds.readable);
-                const decBuf = await res.arrayBuffer();
-                decompressedText += ' ' + textDecoder.decode(decBuf);
-              } catch {
-                try {
-                  const ds2 = new DecompressionStream('deflate');
-                  const writer2 = ds2.writable.getWriter();
-                  writer2.write(streamChunk);
-                  writer2.close();
-                  const res2 = new Response(ds2.readable);
-                  const decBuf2 = await res2.arrayBuffer();
-                  decompressedText += ' ' + textDecoder.decode(decBuf2);
-                } catch {}
-              }
-            }
-          }
-        }
-
-        // 3. Extract text inside PDF parentheses (text operators)
-        const combined = `${text} ${printable} ${decompressedText}`;
-        const parenMatches = combined.match(/\(([^()]{2,100})\)/g) || [];
-        const parenText = parenMatches.map((m) => m.slice(1, -1)).join(' ');
-
-        resolve(`${combined} ${parenText}`);
+        const parenMatches = (printable.match(/\(([^()]{2,100})\)/g) || []).map((m) => m.slice(1, -1)).join(' ');
+        resolve(`${decoded} ${printable} ${parenMatches} ${file.name}`);
       } catch {
-        resolve('');
+        resolve(file.name);
       }
     };
-    reader.onerror = () => resolve('');
+    reader.onerror = () => resolve(file.name);
     reader.readAsArrayBuffer(file);
   });
 }
@@ -159,6 +83,11 @@ const ALL_TECH_KEYWORDS = [
   'System Design', 'Whisper', 'SBERT', 'Transformers', 'Machine Learning', 'Next.js',
   'Angular', 'Vue.js', 'Spring Boot', 'Django', 'Flask', 'FastAPI', 'Java', 'C++', 'C#'
 ];
+
+// Engineering domain indicators
+const BACKEND_DOMAIN_REGEX = /\b(backend|node|nodejs|express|postgres|postgresql|sql|mysql|databases?|rest|apis?|redis|python|typescript|servers?|microservices|django|flask|fastapi|spring|java|c\+\+|sbert|whisper|transformers)\b/i;
+const FRONTEND_DOMAIN_REGEX = /\b(frontend|front-end|react|reactjs|typescript|javascript|css|html|tailwind|ui|web|redux|vue|angular|nextjs|next\.js)\b/i;
+const FULLSTACK_DOMAIN_REGEX = /\b(full stack|fullstack|full-stack|software engineer|developer|sde|programmer|coder|engineering|web development)\b/i;
 
 export const TJILoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -228,6 +157,17 @@ export const TJILoginPage: React.FC = () => {
       }
     }
 
+    // 3. Domain Experience Intelligence: If candidate worked in Backend, Frontend, or Fullstack
+    if (BACKEND_DOMAIN_REGEX.test(textContent) || BACKEND_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('Node.js', 'Express', 'PostgreSQL', 'REST API', 'TypeScript', 'SQL', 'Python', 'Redis');
+    }
+    if (FRONTEND_DOMAIN_REGEX.test(textContent) || FRONTEND_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('React', 'TypeScript', 'CSS', 'HTML', 'JavaScript', 'Tailwind', 'UI');
+    }
+    if (FULLSTACK_DOMAIN_REGEX.test(textContent) || FULLSTACK_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('React', 'Node.js', 'PostgreSQL', 'TypeScript', 'REST API', 'JavaScript', 'SQL');
+    }
+
     try {
       const formData = new FormData();
       formData.append('resume', chosen);
@@ -254,7 +194,6 @@ export const TJILoginPage: React.FC = () => {
       setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
       setPhone('+91 98000 12345');
     } finally {
-      // If binary font CMap prevented text extraction, give candidate a rich starter set matching their selected role
       if (discoveredSkills.length === 0 && selectedRole) {
         discoveredSkills = [...selectedRole.requiredSkills];
       }

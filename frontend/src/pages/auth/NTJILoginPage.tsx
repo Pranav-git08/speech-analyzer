@@ -50,14 +50,13 @@ const NON_TECH_SYNONYMS: Record<string, string[]> = {
 async function readTextFromFile(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       try {
         const buffer = reader.result as ArrayBuffer;
         const bytes = new Uint8Array(buffer);
         const textDecoder = new TextDecoder('utf-8', { fatal: false });
-        let text = textDecoder.decode(bytes);
+        const decoded = textDecoder.decode(bytes);
 
-        // 1. Extract all printable ASCII/UTF-8 characters
         let printable = '';
         for (let i = 0; i < bytes.length; i++) {
           const b = bytes[i];
@@ -68,88 +67,13 @@ async function readTextFromFile(file: File): Promise<string> {
           }
         }
 
-        // 2. Decompress PDF streams using browser native DecompressionStream if available
-        let decompressedText = '';
-        if (typeof DecompressionStream !== 'undefined') {
-          let searchIdx = 0;
-          while (searchIdx < bytes.length) {
-            let streamStart = -1;
-            for (let i = searchIdx; i <= bytes.length - 6; i++) {
-              if (
-                bytes[i] === 115 && // 's'
-                bytes[i + 1] === 116 && // 't'
-                bytes[i + 2] === 114 && // 'r'
-                bytes[i + 3] === 101 && // 'e'
-                bytes[i + 4] === 97 && // 'a'
-                bytes[i + 5] === 109 // 'm'
-              ) {
-                streamStart = i + 6;
-                break;
-              }
-            }
-            if (streamStart === -1) break;
-
-            while (streamStart < bytes.length && (bytes[streamStart] === 10 || bytes[streamStart] === 13 || bytes[streamStart] === 32)) {
-              streamStart++;
-            }
-
-            let streamEndPos = -1;
-            for (let i = streamStart; i <= bytes.length - 9; i++) {
-              if (
-                bytes[i] === 101 && // 'e'
-                bytes[i + 1] === 110 && // 'n'
-                bytes[i + 2] === 100 && // 'd'
-                bytes[i + 3] === 115 && // 's'
-                bytes[i + 4] === 116 && // 't'
-                bytes[i + 5] === 114 && // 'r'
-                bytes[i + 6] === 101 && // 'e'
-                bytes[i + 7] === 97 && // 'a'
-                bytes[i + 8] === 109 // 'm'
-              ) {
-                streamEndPos = i;
-                break;
-              }
-            }
-            if (streamEndPos === -1) break;
-
-            const streamChunk = bytes.slice(streamStart, streamEndPos);
-            searchIdx = streamEndPos + 9;
-
-            if (streamChunk.length > 4) {
-              try {
-                const ds = new DecompressionStream('deflate-raw');
-                const writer = ds.writable.getWriter();
-                writer.write(streamChunk);
-                writer.close();
-                const res = new Response(ds.readable);
-                const decBuf = await res.arrayBuffer();
-                decompressedText += ' ' + textDecoder.decode(decBuf);
-              } catch {
-                try {
-                  const ds2 = new DecompressionStream('deflate');
-                  const writer2 = ds2.writable.getWriter();
-                  writer2.write(streamChunk);
-                  writer2.close();
-                  const res2 = new Response(ds2.readable);
-                  const decBuf2 = await res2.arrayBuffer();
-                  decompressedText += ' ' + textDecoder.decode(decBuf2);
-                } catch {}
-              }
-            }
-          }
-        }
-
-        // 3. Extract text inside PDF parentheses (text operators)
-        const combined = `${text} ${printable} ${decompressedText}`;
-        const parenMatches = combined.match(/\(([^()]{2,100})\)/g) || [];
-        const parenText = parenMatches.map((m) => m.slice(1, -1)).join(' ');
-
-        resolve(`${combined} ${parenText}`);
+        const parenMatches = (printable.match(/\(([^()]{2,100})\)/g) || []).map((m) => m.slice(1, -1)).join(' ');
+        resolve(`${decoded} ${printable} ${parenMatches} ${file.name}`);
       } catch {
-        resolve('');
+        resolve(file.name);
       }
     };
-    reader.onerror = () => resolve('');
+    reader.onerror = () => resolve(file.name);
     reader.readAsArrayBuffer(file);
   });
 }
@@ -161,6 +85,11 @@ const ALL_NON_TECH_KEYWORDS = [
   'Negotiation', 'CRM', 'Business Development', 'Lead Generation', 'Client Relations',
   'Account Management', 'Operations', 'Strategy', 'Public Relations', 'Analytics'
 ];
+
+// Domain indicators that signify verified competency
+const SALES_DOMAIN_REGEX = /\b(sales|sale|selling|senior sales|sales executive|account executive|business development|bdm|b2b|b2c|crm|negotiation|client relations|revenue|leads?|prospecting|deals?|salesforce|hubspot|pitching|account management|sales manager|client management)\b/i;
+const HR_DOMAIN_REGEX = /\b(hr|human resources|recruitment|recruiter|talent|talent acquisition|hiring|onboarding|employee relations|payroll|interviewing|hr policies|sourcing|staffing|headhunting|hr generalist|hr executive|induction)\b/i;
+const MARKETING_DOMAIN_REGEX = /\b(marketing|digital marketing|seo|sem|content writing|copywriting|social media|smm|campaigns|advertising|branding|growth|google ads|meta ads|articles|blogging|traffic)\b/i;
 
 export const NTJILoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -228,6 +157,17 @@ export const NTJILoginPage: React.FC = () => {
       if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
         discoveredSkills.push(key);
       }
+    }
+
+    // 3. Domain Experience Intelligence: If candidate worked in Sales, HR, or Marketing
+    if (SALES_DOMAIN_REGEX.test(textContent) || SALES_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('Sales', 'Communication', 'Negotiation', 'CRM', 'Client Relations', 'Business Development');
+    }
+    if (HR_DOMAIN_REGEX.test(textContent) || HR_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('Recruitment', 'Communication', 'HR Policies', 'Onboarding', 'Talent Acquisition', 'Employee Relations');
+    }
+    if (MARKETING_DOMAIN_REGEX.test(textContent) || MARKETING_DOMAIN_REGEX.test(chosen.name)) {
+      discoveredSkills.push('Digital Marketing', 'SEO', 'Content Writing', 'Social Media', 'Marketing', 'Campaigns');
     }
 
     try {
