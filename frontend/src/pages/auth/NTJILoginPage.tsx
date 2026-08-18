@@ -4,6 +4,7 @@ import api from '../../api/client';
 import { JobRole } from '../../types';
 import { IOSNavbar } from '../../components/IOSNavbar';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
+import { extractResumeData } from '../../utils/resumeExtractor';
 
 const NTJI_LANGUAGES = [
   { code: 'English', label: 'English (Global Standard)', icon: '🌐', flag: '🇬🇧' },
@@ -35,61 +36,17 @@ const DEFAULT_NTJI_ROLES: JobRole[] = [
 
 const NON_TECH_SYNONYMS: Record<string, string[]> = {
   'recruitment': ['recruitment', 'recruiter', 'recruiting', 'talent acquisition', 'sourcing', 'hiring', 'interviewing', 'staffing', 'headhunting', 'human resources', 'hr'],
-  'communication': ['communication', 'interpersonal', 'presentation', 'verbal', 'written', 'collaboration', 'stakeholder', 'english'],
+  'communication': ['communication', 'interpersonal', 'presentation', 'verbal', 'written', 'collaboration', 'stakeholder', 'english', 'public speaking'],
   'hr policies': ['hr', 'human resources', 'hr policies', 'compliance', 'employee relations', 'onboarding', 'payroll', 'labor law', 'recruitment'],
   'onboarding': ['onboarding', 'induction', 'training', 'hr', 'orientation', 'offboarding', 'recruitment', 'human resources'],
   'digital marketing': ['digital marketing', 'marketing', 'seo', 'sem', 'google ads', 'meta ads', 'analytics', 'growth', 'campaigns', 'social media', 'advertising'],
   'seo': ['seo', 'search engine', 'keyword research', 'backlinks', 'ranking', 'organic traffic', 'serp', 'sem', 'marketing'],
   'content writing': ['content', 'content writing', 'copywriting', 'blogging', 'articles', 'storytelling', 'creative writing', 'marketing'],
   'social media': ['social media', 'smm', 'instagram', 'linkedin', 'facebook', 'twitter', 'content creation', 'community', 'marketing'],
-  'sales': ['sales', 'selling', 'b2b', 'b2c', 'business development', 'revenue', 'closing', 'cold calling', 'prospecting', 'negotiation', 'client'],
-  'negotiation': ['negotiation', 'deal closing', 'client management', 'pricing', 'contracts', 'pitching', 'sales'],
-  'crm': ['crm', 'salesforce', 'hubspot', 'zoho', 'pipeline', 'lead management', 'leads', 'sales'],
+  'sales': ['sales', 'sale', 'selling', 'b2b', 'b2c', 'business development', 'revenue', 'closing', 'cold calling', 'prospecting', 'negotiation', 'client', 'sales representative', 'senior sales', 'sales executive', 'lead generation'],
+  'negotiation': ['negotiation', 'deal closing', 'client management', 'pricing', 'contracts', 'pitching', 'sales', 'closing techniques'],
+  'crm': ['crm', 'salesforce', 'hubspot', 'zoho', 'pipeline', 'lead management', 'leads', 'sales', 'pos', 'crm management', 'crm software'],
 };
-
-async function readTextFromFile(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const buffer = reader.result as ArrayBuffer;
-        const bytes = new Uint8Array(buffer);
-        const textDecoder = new TextDecoder('utf-8', { fatal: false });
-        const decoded = textDecoder.decode(bytes);
-
-        let printable = '';
-        for (let i = 0; i < bytes.length; i++) {
-          const b = bytes[i];
-          if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
-            printable += String.fromCharCode(b);
-          } else if (printable.length > 0 && printable[printable.length - 1] !== ' ') {
-            printable += ' ';
-          }
-        }
-
-        const parenMatches = (printable.match(/\(([^()]{2,100})\)/g) || []).map((m) => m.slice(1, -1)).join(' ');
-        resolve(`${decoded} ${printable} ${parenMatches} ${file.name}`);
-      } catch {
-        resolve(file.name);
-      }
-    };
-    reader.onerror = () => resolve(file.name);
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-const ALL_NON_TECH_KEYWORDS = [
-  'Recruitment', 'Communication', 'HR Policies', 'Onboarding', 'Talent Acquisition',
-  'Human Resources', 'Employee Relations', 'Interviewing', 'Digital Marketing', 'SEO',
-  'Content Writing', 'Social Media', 'Marketing', 'Copywriting', 'Campaigns', 'Sales',
-  'Negotiation', 'CRM', 'Business Development', 'Lead Generation', 'Client Relations',
-  'Account Management', 'Operations', 'Strategy', 'Public Relations', 'Analytics'
-];
-
-// Domain indicators that signify verified competency
-const SALES_DOMAIN_REGEX = /\b(sales|sale|selling|senior sales|sales executive|account executive|business development|bdm|b2b|b2c|crm|negotiation|client relations|revenue|leads?|prospecting|deals?|salesforce|hubspot|pitching|account management|sales manager|client management)\b/i;
-const HR_DOMAIN_REGEX = /\b(hr|human resources|recruitment|recruiter|talent|talent acquisition|hiring|onboarding|employee relations|payroll|interviewing|hr policies|sourcing|staffing|headhunting|hr generalist|hr executive|induction)\b/i;
-const MARKETING_DOMAIN_REGEX = /\b(marketing|digital marketing|seo|sem|content writing|copywriting|social media|smm|campaigns|advertising|branding|growth|google ads|meta ads|articles|blogging|traffic)\b/i;
 
 export const NTJILoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -134,41 +91,14 @@ export const NTJILoginPage: React.FC = () => {
     setIsParsing(true);
     setError('');
 
-    const baseName = chosen.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-    const fallbackName = baseName || 'Candidate';
+    // High-precision client-side extraction using PDF.js
+    const extracted = await extractResumeData(chosen);
+    setRawText(extracted.text);
+    setName(extracted.name);
+    setEmail(extracted.email);
+    setPhone(extracted.phone);
 
-    const textContent = await readTextFromFile(chosen);
-    setRawText(textContent);
-
-    let discoveredSkills: string[] = [];
-    const lowerText = textContent.toLowerCase();
-
-    // 1. Scan across ALL non-tech keywords
-    for (const key of ALL_NON_TECH_KEYWORDS) {
-      const lowerKey = key.toLowerCase();
-      if (lowerText.includes(lowerKey) || chosen.name.toLowerCase().includes(lowerKey)) {
-        discoveredSkills.push(key);
-      }
-    }
-
-    // 2. Scan across synonyms dictionary
-    for (const key of Object.keys(NON_TECH_SYNONYMS)) {
-      const syns = NON_TECH_SYNONYMS[key] || [key];
-      if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
-        discoveredSkills.push(key);
-      }
-    }
-
-    // 3. Domain Experience Intelligence: If candidate worked in Sales, HR, or Marketing
-    if (SALES_DOMAIN_REGEX.test(textContent) || SALES_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('Sales', 'Communication', 'Negotiation', 'CRM', 'Client Relations', 'Business Development');
-    }
-    if (HR_DOMAIN_REGEX.test(textContent) || HR_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('Recruitment', 'Communication', 'HR Policies', 'Onboarding', 'Talent Acquisition', 'Employee Relations');
-    }
-    if (MARKETING_DOMAIN_REGEX.test(textContent) || MARKETING_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('Digital Marketing', 'SEO', 'Content Writing', 'Social Media', 'Marketing', 'Campaigns');
-    }
+    let discoveredSkills: string[] = [...extracted.skills];
 
     try {
       const formData = new FormData();
@@ -179,22 +109,15 @@ export const NTJILoginPage: React.FC = () => {
       });
 
       if (previewRes.data) {
-        setName(previewRes.data.name || fallbackName);
-        setEmail(previewRes.data.email || `${fallbackName.toLowerCase().replace(/\s+/g, '.')}@ntji.local`);
-        setPhone(previewRes.data.phone || '+91 98000 12345');
+        if (previewRes.data.name) setName(previewRes.data.name);
+        if (previewRes.data.email) setEmail(previewRes.data.email);
+        if (previewRes.data.phone) setPhone(previewRes.data.phone);
         if (Array.isArray(previewRes.data.skills) && previewRes.data.skills.length > 0) {
           discoveredSkills = [...new Set([...discoveredSkills, ...previewRes.data.skills])];
         }
-      } else {
-        setName(fallbackName);
-        setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@ntji.local`);
-        setPhone('+91 98000 12345');
       }
     } catch (err: any) {
       console.warn('Preview parse fallback:', err);
-      setName(fallbackName);
-      setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@ntji.local`);
-      setPhone('+91 98000 12345');
     } finally {
       if (discoveredSkills.length === 0 && selectedRole) {
         discoveredSkills = [...selectedRole.requiredSkills];

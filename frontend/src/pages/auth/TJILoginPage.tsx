@@ -4,6 +4,7 @@ import api from '../../api/client';
 import { JobRole } from '../../types';
 import { IOSNavbar } from '../../components/IOSNavbar';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
+import { extractResumeData } from '../../utils/resumeExtractor';
 
 const TJI_LANGUAGES = [
   { code: 'English', label: 'English (Global Standard)', icon: '🌐', flag: '🇬🇧' },
@@ -44,50 +45,6 @@ const TECH_SYNONYMS: Record<string, string[]> = {
   'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap', 'styling', 'html/css', 'ui', 'frontend'],
   'html': ['html', 'html5', 'web', 'dom', 'frontend'],
 };
-
-async function readTextFromFile(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const buffer = reader.result as ArrayBuffer;
-        const bytes = new Uint8Array(buffer);
-        const textDecoder = new TextDecoder('utf-8', { fatal: false });
-        const decoded = textDecoder.decode(bytes);
-
-        let printable = '';
-        for (let i = 0; i < bytes.length; i++) {
-          const b = bytes[i];
-          if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
-            printable += String.fromCharCode(b);
-          } else if (printable.length > 0 && printable[printable.length - 1] !== ' ') {
-            printable += ' ';
-          }
-        }
-
-        const parenMatches = (printable.match(/\(([^()]{2,100})\)/g) || []).map((m) => m.slice(1, -1)).join(' ');
-        resolve(`${decoded} ${printable} ${parenMatches} ${file.name}`);
-      } catch {
-        resolve(file.name);
-      }
-    };
-    reader.onerror = () => resolve(file.name);
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-const ALL_TECH_KEYWORDS = [
-  'Node.js', 'Express', 'PostgreSQL', 'REST API', 'TypeScript', 'JavaScript', 'Python',
-  'SQL', 'MySQL', 'MongoDB', 'Redis', 'React', 'HTML', 'CSS', 'Tailwind', 'Docker',
-  'Kubernetes', 'AWS', 'Azure', 'GCP', 'Git', 'GitHub', 'CI/CD', 'Microservices',
-  'System Design', 'Whisper', 'SBERT', 'Transformers', 'Machine Learning', 'Next.js',
-  'Angular', 'Vue.js', 'Spring Boot', 'Django', 'Flask', 'FastAPI', 'Java', 'C++', 'C#'
-];
-
-// Engineering domain indicators
-const BACKEND_DOMAIN_REGEX = /\b(backend|node|nodejs|express|postgres|postgresql|sql|mysql|databases?|rest|apis?|redis|python|typescript|servers?|microservices|django|flask|fastapi|spring|java|c\+\+|sbert|whisper|transformers)\b/i;
-const FRONTEND_DOMAIN_REGEX = /\b(frontend|front-end|react|reactjs|typescript|javascript|css|html|tailwind|ui|web|redux|vue|angular|nextjs|next\.js)\b/i;
-const FULLSTACK_DOMAIN_REGEX = /\b(full stack|fullstack|full-stack|software engineer|developer|sde|programmer|coder|engineering|web development)\b/i;
 
 export const TJILoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -132,41 +89,14 @@ export const TJILoginPage: React.FC = () => {
     setIsParsing(true);
     setError('');
 
-    const baseName = chosen.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-    const fallbackName = baseName || 'Candidate';
+    // High-precision client-side extraction using PDF.js
+    const extracted = await extractResumeData(chosen);
+    setRawText(extracted.text);
+    setName(extracted.name);
+    setEmail(extracted.email);
+    setPhone(extracted.phone);
 
-    const textContent = await readTextFromFile(chosen);
-    setRawText(textContent);
-
-    let discoveredSkills: string[] = [];
-    const lowerText = textContent.toLowerCase();
-
-    // 1. Scan across ALL technical keywords
-    for (const key of ALL_TECH_KEYWORDS) {
-      const lowerKey = key.toLowerCase();
-      if (lowerText.includes(lowerKey) || chosen.name.toLowerCase().includes(lowerKey)) {
-        discoveredSkills.push(key);
-      }
-    }
-
-    // 2. Scan across synonyms dictionary
-    for (const key of Object.keys(TECH_SYNONYMS)) {
-      const syns = TECH_SYNONYMS[key] || [key];
-      if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
-        discoveredSkills.push(key);
-      }
-    }
-
-    // 3. Domain Experience Intelligence: If candidate worked in Backend, Frontend, or Fullstack
-    if (BACKEND_DOMAIN_REGEX.test(textContent) || BACKEND_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('Node.js', 'Express', 'PostgreSQL', 'REST API', 'TypeScript', 'SQL', 'Python', 'Redis');
-    }
-    if (FRONTEND_DOMAIN_REGEX.test(textContent) || FRONTEND_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('React', 'TypeScript', 'CSS', 'HTML', 'JavaScript', 'Tailwind', 'UI');
-    }
-    if (FULLSTACK_DOMAIN_REGEX.test(textContent) || FULLSTACK_DOMAIN_REGEX.test(chosen.name)) {
-      discoveredSkills.push('React', 'Node.js', 'PostgreSQL', 'TypeScript', 'REST API', 'JavaScript', 'SQL');
-    }
+    let discoveredSkills: string[] = [...extracted.skills];
 
     try {
       const formData = new FormData();
@@ -177,22 +107,15 @@ export const TJILoginPage: React.FC = () => {
       });
 
       if (previewRes.data) {
-        setName(previewRes.data.name || fallbackName);
-        setEmail(previewRes.data.email || `${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
-        setPhone(previewRes.data.phone || '+91 98000 12345');
+        if (previewRes.data.name) setName(previewRes.data.name);
+        if (previewRes.data.email) setEmail(previewRes.data.email);
+        if (previewRes.data.phone) setPhone(previewRes.data.phone);
         if (Array.isArray(previewRes.data.skills) && previewRes.data.skills.length > 0) {
           discoveredSkills = [...new Set([...discoveredSkills, ...previewRes.data.skills])];
         }
-      } else {
-        setName(fallbackName);
-        setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
-        setPhone('+91 98000 12345');
       }
     } catch (err: any) {
       console.warn('Preview parse fallback:', err);
-      setName(fallbackName);
-      setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
-      setPhone('+91 98000 12345');
     } finally {
       if (discoveredSkills.length === 0 && selectedRole) {
         discoveredSkills = [...selectedRole.requiredSkills];
