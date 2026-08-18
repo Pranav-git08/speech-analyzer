@@ -275,7 +275,7 @@ export const GestureSystem: React.FC<GestureSystemProps> = ({ enableCursorTrail 
           ctx.strokeStyle = 'rgba(96, 165, 250, 0.5)';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(px, py, textWidth + 16, 20, 6);
+          if (ctx.roundRect) { ctx.roundRect(px, py, textWidth + 16, 20, 6); } else { ctx.rect(px, py, textWidth + 16, 20); }
           ctx.fill();
           ctx.stroke();
 
