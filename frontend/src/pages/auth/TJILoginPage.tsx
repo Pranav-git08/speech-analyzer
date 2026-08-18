@@ -177,7 +177,7 @@ export const TJILoginPage: React.FC = () => {
   const matchPercentage = requiredSkills.length > 0 
     ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
     : 0;
-  const isEligible = Boolean(file) && matchPercentage >= 50;
+  const isEligible = Boolean(file) && matchPercentage >= 35;
 
   const handleStartInterview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +192,7 @@ export const TJILoginPage: React.FC = () => {
     }
 
     if (!isEligible) {
-      setError(`⚠️ Not Eligible: Your resume matched ${matchPercentage}% of required competencies (minimum 50% required for ${selectedRole.name}). Please select a matching role or update your resume.`);
+      setError(`⚠️ Not Eligible: Your resume matched ${matchPercentage}% of required competencies (minimum 35% required for ${selectedRole.name}). Please select a matching role or update your resume.`);
       return;
     }
 
@@ -539,7 +539,7 @@ export const TJILoginPage: React.FC = () => {
             {file && selectedRole && (
               <div>
                 {isEligible ? (
-                  /* ✅ ELIGIBLE: Matching Skills Box (>= 50% Match) */
+                  /* ✅ ELIGIBLE: Matching Skills Box (>= 35% Match) */
                   <div
                     style={{
                       background: 'rgba(74, 222, 128, 0.1)',
@@ -558,7 +558,7 @@ export const TJILoginPage: React.FC = () => {
                         </strong>
                       </div>
                       <span style={{ background: '#22c55e', color: '#ffffff', padding: '0.25rem 0.75rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800 }}>
-                        {matchPercentage}% Match (Min 50% Met ✓)
+                        {matchPercentage}% Match (Min 35% Met ✓)
                       </span>
                     </div>
 
@@ -592,7 +592,7 @@ export const TJILoginPage: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  /* ⚠️ NOT ELIGIBLE: Under 50% Match */
+                  /* ⚠️ NOT ELIGIBLE: Under 35% Match */
                   <div
                     style={{
                       background: 'rgba(248, 113, 113, 0.15)',
@@ -610,7 +610,7 @@ export const TJILoginPage: React.FC = () => {
                           ELIGIBILITY STATUS: NOT ELIGIBLE FOR {selectedRole.name.toUpperCase()} ({matchPercentage}% Match)
                         </strong>
                         <span style={{ fontSize: '0.84rem', color: '#f87171' }}>
-                          A minimum of <strong>50% matching skills</strong> is required to unlock this interview. (Current: {matchPercentage}%)
+                          A minimum of <strong>35% matching skills</strong> is required to unlock this interview. (Current: {matchPercentage}%)
                         </span>
                       </div>
                     </div>
@@ -705,11 +705,11 @@ export const TJILoginPage: React.FC = () => {
               }}
             >
               {!file
-                ? '📄 Please Upload Resume to Verify Eligibility (Min. 50% Match)'
+                ? '📄 Please Upload Resume to Verify Eligibility (Min. 35% Match)'
                 : isParsing
                 ? '⏳ AI Extracting & Matching Skills...'
                 : !isEligible
-                ? `🚫 Not Eligible: Only ${matchPercentage}% Match (Min. 50% Required)`
+                ? `🚫 Not Eligible: Only ${matchPercentage}% Match (Min. 35% Required)`
                 : loading
                 ? 'Initializing Technical Assessment with Matched Skills...'
                 : `🚀 Start Technical Interview (${matchPercentage}% Match • ${matchedSkills.length} Matched Skills) ➔`}
