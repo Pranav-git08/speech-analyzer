@@ -2,6 +2,8 @@ import { CandidateSummary, CandidateDetail, CandidateStatus, Track } from '../ty
 import { EvaluationResult, Question } from '../types';
 
 const STORAGE_KEY = 'SPEECH_ANALYZER_CANDIDATES';
+const DELETED_KEY = 'SPEECH_ANALYZER_DELETED_IDS';
+const INIT_KEY = 'SPEECH_ANALYZER_INITIALIZED_V2';
 
 export interface StoredCandidateRecord {
   id: string;
@@ -20,6 +22,7 @@ export interface StoredCandidateRecord {
   gdScore?: number | null;
   skills: string[];
   createdAt: string;
+  recordingDeleted?: boolean;
   answers: Array<{
     questionId: string;
     questionText: string;
@@ -151,21 +154,49 @@ const DEFAULT_SEEDS: StoredCandidateRecord[] = [
   },
 ];
 
+export function getDeletedCandidateIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function markCandidateDeleted(id: string): void {
+  try {
+    const deleted = getDeletedCandidateIds();
+    deleted.add(id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deleted)));
+  } catch (err) {
+    console.warn('[CandidateStore] Failed to record deleted ID:', err);
+  }
+}
+
+export function unmarkCandidateDeleted(id: string): void {
+  try {
+    const deleted = getDeletedCandidateIds();
+    deleted.delete(id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deleted)));
+  } catch (err) {
+    console.warn('[CandidateStore] Failed to unmark deleted ID:', err);
+  }
+}
+
 function getStoredRecords(): StoredCandidateRecord[] {
   try {
+    const isInit = localStorage.getItem(INIT_KEY);
+    if (!isInit) {
+      localStorage.setItem(INIT_KEY, 'true');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
+      return DEFAULT_SEEDS;
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
-      return DEFAULT_SEEDS;
-    }
-    const parsed: StoredCandidateRecord[] = JSON.parse(raw);
-    if (parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
-      return DEFAULT_SEEDS;
-    }
-    return parsed;
+    const parsed: StoredCandidateRecord[] = raw ? JSON.parse(raw) : [];
+    const deleted = getDeletedCandidateIds();
+    return parsed.filter((c) => !deleted.has(c.id));
   } catch {
-    return DEFAULT_SEEDS;
+    return [];
   }
 }
 
@@ -189,6 +220,9 @@ export function saveCandidateSessionToLocal(data: {
   gdAccessCode?: string;
 }): void {
   try {
+    // Unmark in deleted set if retaken
+    unmarkCandidateDeleted(data.candidateId);
+
     const list: StoredCandidateRecord[] = getStoredRecords();
     const existingIdx = list.findIndex((c) => c.id === data.candidateId);
 
@@ -325,7 +359,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
           roundType: found.track === 'TJI' ? 'technical' : 'qualifying',
           status: 'completed',
           finalGrade: found.overallGrade,
-          recordingId: null,
+          recordingId: found.recordingDeleted ? null : 'rec-local-1',
           startedAt: found.createdAt,
           completedAt: found.createdAt,
           questions: found.answers.map((a) => ({
@@ -437,10 +471,52 @@ export function updateLocalCandidateStatus(id: string, newStatus: CandidateStatu
 
 export function deleteLocalCandidate(id: string): void {
   try {
+    markCandidateDeleted(id);
     let list: StoredCandidateRecord[] = getStoredRecords();
     list = list.filter((c) => c.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    console.log('[CandidateStore] Deleted candidate record:', id);
   } catch (err) {
     console.warn('[CandidateStore] Failed to delete local candidate:', err);
+  }
+}
+
+export function deleteMultipleLocalCandidates(ids: string[]): void {
+  try {
+    const idSet = new Set(ids);
+    ids.forEach((id) => markCandidateDeleted(id));
+    let list: StoredCandidateRecord[] = getStoredRecords();
+    list = list.filter((c) => !idSet.has(c.id));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    console.log('[CandidateStore] Deleted multiple candidate records:', ids.length);
+  } catch (err) {
+    console.warn('[CandidateStore] Failed to bulk delete local candidates:', err);
+  }
+}
+
+export function deleteLocalCandidatesByStatus(statuses: CandidateStatus[]): number {
+  try {
+    const statusSet = new Set(statuses);
+    let list: StoredCandidateRecord[] = getStoredRecords();
+    const toDelete = list.filter((c) => statusSet.has(c.status));
+    toDelete.forEach((c) => markCandidateDeleted(c.id));
+    list = list.filter((c) => !statusSet.has(c.status));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    console.log('[CandidateStore] Deleted candidates by status:', toDelete.length);
+    return toDelete.length;
+  } catch (err) {
+    console.warn('[CandidateStore] Failed to delete candidates by status:', err);
+    return 0;
+  }
+}
+
+export function deleteLocalCandidateRecordings(candidateIds: string[]): void {
+  try {
+    const idSet = new Set(candidateIds);
+    let list: StoredCandidateRecord[] = getStoredRecords();
+    list = list.map((c) => (idSet.has(c.id) ? { ...c, recordingDeleted: true } : c));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.warn('[CandidateStore] Failed to delete local recordings:', err);
   }
 }

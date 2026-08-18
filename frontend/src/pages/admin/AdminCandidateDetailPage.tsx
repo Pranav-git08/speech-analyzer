@@ -13,7 +13,7 @@ import {
   AntiCheatReportSummary,
 } from '../../types/admin';
 import AIAgentChat from '../../components/AIAgentChat';
-import { getLocalCandidateDetail, updateLocalCandidateStatus } from '../../utils/candidateStore';
+import { getLocalCandidateDetail, updateLocalCandidateStatus, deleteLocalCandidate } from '../../utils/candidateStore';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
 
 const STATUS_LABELS: Record<CandidateStatus, string> = {
@@ -249,15 +249,28 @@ export const AdminCandidateDetailPage: React.FC = () => {
     setActionLoading(true);
     setActionMsg('');
     setActionError('');
+    updateLocalCandidateStatus(candidate.id, 'rejected');
     try {
-      const res = await api.post<{ message: string }>(`/admin/candidate/${candidate.id}/reject`);
+      const res = await api.post<{ message: string }>(`/admin/candidate/${candidate.id}/reject`, {}, { timeout: 3000 });
       setActionMsg(res.data.message);
-      await fetchCandidate();
-    } catch (err: unknown) {
-      setActionError((err as any)?.response?.data?.error || 'Failed to reject candidate.');
+    } catch {
+      setActionMsg('Candidate marked as rejected.');
     } finally {
+      await fetchCandidate();
       setActionLoading(false);
     }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!candidate) return;
+    if (!window.confirm(`⚠️ Are you sure you want to permanently delete all data for ${candidate.name}?`)) return;
+    deleteLocalCandidate(candidate.id);
+    try {
+      await api.delete(`/admin/candidate/${candidate.id}`, { timeout: 3000 });
+    } catch {
+      // handled
+    }
+    navigate('/admin');
   };
 
   if (loading) {
@@ -315,7 +328,7 @@ export const AdminCandidateDetailPage: React.FC = () => {
       <AIAgentChat candidateId={id} />
 
       {/* Top Bar Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <button
           onClick={() => navigate('/admin')}
           style={{
@@ -336,11 +349,32 @@ export const AdminCandidateDetailPage: React.FC = () => {
           ← Back to Candidates
         </button>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Candidate ID:</span>
-          <code style={{ background: 'rgba(255, 255, 255, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.78rem', color: '#cbd5e1' }}>
-            {candidate.id}
-          </code>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Candidate ID:</span>
+            <code style={{ background: 'rgba(255, 255, 255, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.78rem', color: '#cbd5e1' }}>
+              {candidate.id}
+            </code>
+          </div>
+          <button
+            onClick={handleDeleteCandidate}
+            style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#f87171',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+            title="Permanently remove candidate and all evaluation data"
+          >
+            🗑️ Delete Candidate
+          </button>
         </div>
       </div>
 
