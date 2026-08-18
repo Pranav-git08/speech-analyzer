@@ -33,6 +33,42 @@ const DEFAULT_TJI_ROLES: JobRole[] = [
   },
 ];
 
+const TECH_SYNONYMS: Record<string, string[]> = {
+  'react': ['react', 'reactjs', 'react.js', 'redux', 'next.js', 'nextjs', 'jsx', 'frontend'],
+  'typescript': ['typescript', 'ts', 'type script'],
+  'javascript': ['javascript', 'js', 'es6', 'ecmascript'],
+  'node.js': ['node', 'nodejs', 'node.js', 'express', 'express.js', 'nest', 'nestjs', 'backend'],
+  'express': ['express', 'expressjs', 'express.js', 'node.js', 'nodejs', 'koa', 'fastify'],
+  'postgresql': ['postgres', 'postgresql', 'sql', 'psql', 'relational database', 'database', 'rdbms', 'mysql'],
+  'rest api': ['rest', 'restful', 'api', 'apis', 'graphql', 'json', 'endpoints', 'microservices'],
+  'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap', 'styling', 'html/css', 'ui'],
+  'html': ['html', 'html5', 'web', 'dom'],
+};
+
+async function readTextFromFile(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const buffer = reader.result as ArrayBuffer;
+        const bytes = new Uint8Array(buffer);
+        let text = '';
+        for (let i = 0; i < bytes.length; i++) {
+          const b = bytes[i];
+          if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
+            text += String.fromCharCode(b);
+          }
+        }
+        resolve(text);
+      } catch {
+        resolve('');
+      }
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 export const TJILoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [roles, setRoles] = useState<JobRole[]>(DEFAULT_TJI_ROLES);
@@ -44,6 +80,7 @@ export const TJILoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [parsedSkills, setParsedSkills] = useState<string[]>([]);
+  const [rawText, setRawText] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -76,7 +113,19 @@ export const TJILoginPage: React.FC = () => {
 
     const baseName = chosen.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
     const fallbackName = baseName || 'Candidate';
-    const fallbackSkills = selectedRole?.requiredSkills || ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'System Design'];
+
+    const textContent = await readTextFromFile(chosen);
+    setRawText(textContent);
+
+    let discoveredSkills: string[] = [];
+    const lowerText = textContent.toLowerCase();
+
+    for (const key of Object.keys(TECH_SYNONYMS)) {
+      const syns = TECH_SYNONYMS[key] || [key];
+      if (syns.some((s) => lowerText.includes(s))) {
+        discoveredSkills.push(key);
+      }
+    }
 
     try {
       const formData = new FormData();
@@ -88,45 +137,47 @@ export const TJILoginPage: React.FC = () => {
 
       if (previewRes.data) {
         setName(previewRes.data.name || fallbackName);
-        setEmail(previewRes.data.email || `${(previewRes.data.name || fallbackName).toLowerCase().replace(/\s+/g, '.')}@tji.local`);
+        setEmail(previewRes.data.email || `${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
         setPhone(previewRes.data.phone || '+91 98000 12345');
-        const s = previewRes.data.skills;
-        setParsedSkills(Array.isArray(s) && s.length > 0 ? s : fallbackSkills);
+        if (Array.isArray(previewRes.data.skills) && previewRes.data.skills.length > 0) {
+          discoveredSkills = [...new Set([...discoveredSkills, ...previewRes.data.skills])];
+        }
       } else {
         setName(fallbackName);
         setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
         setPhone('+91 98000 12345');
-        setParsedSkills(fallbackSkills);
       }
     } catch (err: any) {
       console.warn('Preview parse fallback:', err);
       setName(fallbackName);
       setEmail(`${fallbackName.toLowerCase().replace(/\s+/g, '.')}@tji.local`);
       setPhone('+91 98000 12345');
-      setParsedSkills(fallbackSkills);
     } finally {
+      setParsedSkills(discoveredSkills);
       setIsParsing(false);
     }
   };
 
-  // ── Skill Match & Eligibility Calculation ──────────────────────────────────
+  // ── Strict Skill Match & Eligibility Calculation ───────────────────────────
   const requiredSkills = selectedRole?.requiredSkills || [];
   
-  const matchedSkills = requiredSkills.filter((req) =>
-    parsedSkills.some(
-      (p) =>
-        p.toLowerCase().trim() === req.toLowerCase().trim() ||
-        p.toLowerCase().includes(req.toLowerCase().trim()) ||
-        req.toLowerCase().includes(p.toLowerCase().trim())
-    )
-  );
+  const matchedSkills = requiredSkills.filter((req) => {
+    const reqLower = req.toLowerCase().trim();
+    const synonyms = TECH_SYNONYMS[reqLower] || [reqLower];
+    const inParsed = parsedSkills.some((p) => {
+      const pLower = p.toLowerCase().trim();
+      return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
+    });
+    if (inParsed) return true;
+    const lowerRaw = rawText.toLowerCase();
+    return synonyms.some((syn) => lowerRaw.includes(syn));
+  });
 
-  const effectiveMatchedSkills = matchedSkills.length > 0 ? matchedSkills : requiredSkills;
-  const missingSkills = requiredSkills.filter((req) => !effectiveMatchedSkills.includes(req));
-  const isEligible = Boolean(file);
+  const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));
+  const isEligible = Boolean(file) && matchedSkills.length > 0;
   const matchPercentage = requiredSkills.length > 0 
-    ? Math.max(75, Math.round((effectiveMatchedSkills.length / requiredSkills.length) * 100))
-    : 88;
+    ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
+    : 0;
 
   const handleStartInterview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +188,11 @@ export const TJILoginPage: React.FC = () => {
 
     if (!file) {
       setError('⚠️ Mandatory: Please drop or upload your Resume (PDF or DOCX) to proceed.');
+      return;
+    }
+
+    if (!isEligible) {
+      setError(`⚠️ Not Eligible: Your resume does not match the required competencies for ${selectedRole.name}. Please select a matching role or update your resume.`);
       return;
     }
 
@@ -162,23 +218,23 @@ export const TJILoginPage: React.FC = () => {
           jobRoleId: selectedRole.id,
           track: 'TJI',
           roundType: 'technical',
-          matchedSkills: effectiveMatchedSkills,
+          matchedSkills,
           language: selectedLanguage.code,
           resumeData,
         },
       });
     } catch (err: any) {
       console.error('TJI registration error:', err);
-      // Fallback: If backend upload fails, still let the candidate proceed with local session
+      // Fallback: If backend upload fails, let verified eligible candidate proceed
       navigate('/interview', {
         state: {
           candidateId: `cand-tji-${Date.now()}`,
           jobRoleId: selectedRole.id,
           track: 'TJI',
           roundType: 'technical',
-          matchedSkills: effectiveMatchedSkills,
+          matchedSkills,
           language: selectedLanguage.code,
-          resumeData: { name: name || 'Candidate', skills: effectiveMatchedSkills },
+          resumeData: { name: name || 'Candidate', skills: matchedSkills },
         },
       });
     } finally {
