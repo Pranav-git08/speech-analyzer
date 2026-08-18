@@ -35,15 +35,15 @@ const DEFAULT_TJI_ROLES: JobRole[] = [
 ];
 
 const TECH_SYNONYMS: Record<string, string[]> = {
-  'react': ['react', 'reactjs', 'react.js'],
-  'typescript': ['typescript', 'type script'],
-  'javascript': ['javascript', 'js', 'es6', 'ecmascript'],
-  'node.js': ['node.js', 'nodejs', 'node js', 'node-js'],
-  'express': ['express', 'express.js', 'expressjs'],
-  'postgresql': ['postgresql', 'postgres', 'psql'],
-  'rest api': ['rest api', 'restful api', 'restful apis', 'rest apis', 'rest api design'],
-  'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap'],
-  'html': ['html', 'html5'],
+  'react': ['react', 'reactjs', 'react.js', 'frontend', 'ui', 'web development'],
+  'typescript': ['typescript', 'type script', 'javascript', 'js'],
+  'javascript': ['javascript', 'js', 'es6', 'ecmascript', 'web development', 'programming languages'],
+  'node.js': ['node.js', 'nodejs', 'node js', 'node-js', 'server', 'backend'],
+  'express': ['express', 'express.js', 'expressjs', 'rest', 'api', 'flask', 'django'],
+  'postgresql': ['postgresql', 'postgres', 'psql', 'mysql', 'sql', 'database'],
+  'rest api': ['rest api', 'restful api', 'restful apis', 'rest apis', 'rest api design', 'apis', 'restful'],
+  'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap', 'styling', 'responsive web'],
+  'html': ['html', 'html5', 'web technologies', 'web development', 'web pages'],
 };
 
 export const TJILoginPage: React.FC = () => {
@@ -115,7 +115,37 @@ export const TJILoginPage: React.FC = () => {
     } catch (err: any) {
       console.warn('Preview parse fallback:', err);
     } finally {
-      setParsedSkills([...new Set(discoveredSkills)]);
+      const finalSkills = [...new Set(discoveredSkills)];
+      setParsedSkills(finalSkills);
+
+      // Auto-select best matching role for candidate
+      if (roles && roles.length > 0) {
+        let bestRole = roles[0];
+        let maxScore = -1;
+
+        for (const r of roles) {
+          const reqs = r.requiredSkills || [];
+          const matches = reqs.filter((req) => {
+            const reqLower = req.toLowerCase().trim();
+            const synonyms = TECH_SYNONYMS[reqLower] || [reqLower];
+            return finalSkills.some((p) => {
+              const pLower = p.toLowerCase().trim();
+              return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
+            });
+          }).length;
+
+          const pct = reqs.length > 0 ? (matches / reqs.length) * 100 : 0;
+          if (pct > maxScore) {
+            maxScore = pct;
+            bestRole = r;
+          }
+        }
+
+        if (bestRole && maxScore >= 35) {
+          setSelectedRole(bestRole);
+        }
+      }
+
       setIsParsing(false);
     }
   };

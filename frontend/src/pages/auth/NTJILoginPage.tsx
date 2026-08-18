@@ -114,10 +114,38 @@ export const NTJILoginPage: React.FC = () => {
           discoveredSkills = [...new Set([...discoveredSkills, ...previewRes.data.skills])];
         }
       }
-    } catch (err: any) {
-      console.warn('Preview parse fallback:', err);
     } finally {
-      setParsedSkills([...new Set(discoveredSkills)]);
+      const finalSkills = [...new Set(discoveredSkills)];
+      setParsedSkills(finalSkills);
+
+      // Auto-select best matching role for candidate
+      if (roles && roles.length > 0) {
+        let bestRole = roles[0];
+        let maxScore = -1;
+
+        for (const r of roles) {
+          const reqs = r.requiredSkills || [];
+          const matches = reqs.filter((req) => {
+            const reqLower = req.toLowerCase().trim();
+            const synonyms = NON_TECH_SYNONYMS[reqLower] || [reqLower];
+            return finalSkills.some((p) => {
+              const pLower = p.toLowerCase().trim();
+              return synonyms.some((syn) => pLower === syn || pLower.includes(syn) || syn.includes(pLower));
+            });
+          }).length;
+
+          const pct = reqs.length > 0 ? (matches / reqs.length) * 100 : 0;
+          if (pct > maxScore) {
+            maxScore = pct;
+            bestRole = r;
+          }
+        }
+
+        if (bestRole && maxScore >= 35) {
+          setSelectedRole(bestRole);
+        }
+      }
+
       setIsParsing(false);
     }
   };
