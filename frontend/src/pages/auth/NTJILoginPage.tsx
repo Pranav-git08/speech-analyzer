@@ -34,34 +34,117 @@ const DEFAULT_NTJI_ROLES: JobRole[] = [
 ];
 
 const NON_TECH_SYNONYMS: Record<string, string[]> = {
-  'recruitment': ['recruitment', 'recruiter', 'recruiting', 'talent acquisition', 'sourcing', 'hiring', 'interviewing', 'staffing', 'headhunting'],
-  'communication': ['communication', 'interpersonal', 'presentation', 'verbal', 'written', 'collaboration', 'stakeholder'],
-  'hr policies': ['hr', 'human resources', 'hr policies', 'compliance', 'employee relations', 'onboarding', 'payroll', 'labor law'],
-  'onboarding': ['onboarding', 'induction', 'training', 'hr', 'orientation', 'offboarding'],
-  'digital marketing': ['digital marketing', 'marketing', 'seo', 'sem', 'google ads', 'meta ads', 'analytics', 'growth', 'campaigns'],
-  'seo': ['seo', 'search engine', 'keyword research', 'backlinks', 'ranking', 'organic traffic', 'serp'],
-  'content writing': ['content', 'content writing', 'copywriting', 'blogging', 'articles', 'storytelling', 'creative writing'],
-  'social media': ['social media', 'smm', 'instagram', 'linkedin', 'facebook', 'twitter', 'content creation', 'community'],
-  'sales': ['sales', 'selling', 'b2b', 'b2c', 'business development', 'revenue', 'closing', 'cold calling', 'prospecting'],
-  'negotiation': ['negotiation', 'deal closing', 'client management', 'pricing', 'contracts', 'pitching'],
-  'crm': ['crm', 'salesforce', 'hubspot', 'zoho', 'pipeline', 'lead management', 'leads'],
+  'recruitment': ['recruitment', 'recruiter', 'recruiting', 'talent acquisition', 'sourcing', 'hiring', 'interviewing', 'staffing', 'headhunting', 'human resources', 'hr'],
+  'communication': ['communication', 'interpersonal', 'presentation', 'verbal', 'written', 'collaboration', 'stakeholder', 'english'],
+  'hr policies': ['hr', 'human resources', 'hr policies', 'compliance', 'employee relations', 'onboarding', 'payroll', 'labor law', 'recruitment'],
+  'onboarding': ['onboarding', 'induction', 'training', 'hr', 'orientation', 'offboarding', 'recruitment', 'human resources'],
+  'digital marketing': ['digital marketing', 'marketing', 'seo', 'sem', 'google ads', 'meta ads', 'analytics', 'growth', 'campaigns', 'social media', 'advertising'],
+  'seo': ['seo', 'search engine', 'keyword research', 'backlinks', 'ranking', 'organic traffic', 'serp', 'sem', 'marketing'],
+  'content writing': ['content', 'content writing', 'copywriting', 'blogging', 'articles', 'storytelling', 'creative writing', 'marketing'],
+  'social media': ['social media', 'smm', 'instagram', 'linkedin', 'facebook', 'twitter', 'content creation', 'community', 'marketing'],
+  'sales': ['sales', 'selling', 'b2b', 'b2c', 'business development', 'revenue', 'closing', 'cold calling', 'prospecting', 'negotiation', 'client'],
+  'negotiation': ['negotiation', 'deal closing', 'client management', 'pricing', 'contracts', 'pitching', 'sales'],
+  'crm': ['crm', 'salesforce', 'hubspot', 'zoho', 'pipeline', 'lead management', 'leads', 'sales'],
 };
 
 async function readTextFromFile(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const buffer = reader.result as ArrayBuffer;
         const bytes = new Uint8Array(buffer);
-        let text = '';
+        const textDecoder = new TextDecoder('utf-8', { fatal: false });
+        let text = textDecoder.decode(bytes);
+
+        // 1. Extract all printable ASCII/UTF-8 characters
+        let printable = '';
         for (let i = 0; i < bytes.length; i++) {
           const b = bytes[i];
           if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
-            text += String.fromCharCode(b);
+            printable += String.fromCharCode(b);
+          } else if (printable.length > 0 && printable[printable.length - 1] !== ' ') {
+            printable += ' ';
           }
         }
-        resolve(text);
+
+        // 2. Decompress PDF streams using browser native DecompressionStream if available
+        let decompressedText = '';
+        if (typeof DecompressionStream !== 'undefined') {
+          let searchIdx = 0;
+          while (searchIdx < bytes.length) {
+            let streamStart = -1;
+            for (let i = searchIdx; i <= bytes.length - 6; i++) {
+              if (
+                bytes[i] === 115 && // 's'
+                bytes[i + 1] === 116 && // 't'
+                bytes[i + 2] === 114 && // 'r'
+                bytes[i + 3] === 101 && // 'e'
+                bytes[i + 4] === 97 && // 'a'
+                bytes[i + 5] === 109 // 'm'
+              ) {
+                streamStart = i + 6;
+                break;
+              }
+            }
+            if (streamStart === -1) break;
+
+            while (streamStart < bytes.length && (bytes[streamStart] === 10 || bytes[streamStart] === 13 || bytes[streamStart] === 32)) {
+              streamStart++;
+            }
+
+            let streamEndPos = -1;
+            for (let i = streamStart; i <= bytes.length - 9; i++) {
+              if (
+                bytes[i] === 101 && // 'e'
+                bytes[i + 1] === 110 && // 'n'
+                bytes[i + 2] === 100 && // 'd'
+                bytes[i + 3] === 115 && // 's'
+                bytes[i + 4] === 116 && // 't'
+                bytes[i + 5] === 114 && // 'r'
+                bytes[i + 6] === 101 && // 'e'
+                bytes[i + 7] === 97 && // 'a'
+                bytes[i + 8] === 109 // 'm'
+              ) {
+                streamEndPos = i;
+                break;
+              }
+            }
+            if (streamEndPos === -1) break;
+
+            const streamChunk = bytes.slice(streamStart, streamEndPos);
+            searchIdx = streamEndPos + 9;
+
+            if (streamChunk.length > 4) {
+              try {
+                const ds = new DecompressionStream('deflate-raw');
+                const writer = ds.writable.getWriter();
+                writer.write(streamChunk);
+                writer.close();
+                const res = new Response(ds.readable);
+                const decBuf = await res.arrayBuffer();
+                decompressedText += ' ' + textDecoder.decode(decBuf);
+              } catch {
+                try {
+                  const ds2 = new DecompressionStream('deflate');
+                  const writer2 = ds2.writable.getWriter();
+                  writer2.write(streamChunk);
+                  writer2.close();
+                  const res2 = new Response(ds2.readable);
+                  const decBuf2 = await res2.arrayBuffer();
+                  decompressedText += ' ' + textDecoder.decode(decBuf2);
+                } catch {}
+              }
+            }
+          }
+        }
+
+        // 3. Extract text inside PDF parentheses (text operators)
+        const combined = `${text} ${printable} ${decompressedText}`;
+        const parenMatches = combined.match(/\(([^()]{2,100})\)/g) || [];
+        const parenText = parenMatches.map((m) => m.slice(1, -1)).join(' ');
+
+        resolve(`${combined} ${parenText}`);
       } catch {
         resolve('');
       }
@@ -124,7 +207,7 @@ export const NTJILoginPage: React.FC = () => {
 
     for (const key of Object.keys(NON_TECH_SYNONYMS)) {
       const syns = NON_TECH_SYNONYMS[key] || [key];
-      if (syns.some((s) => lowerText.includes(s))) {
+      if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
         discoveredSkills.push(key);
       }
     }
@@ -172,7 +255,7 @@ export const NTJILoginPage: React.FC = () => {
     });
     if (inParsed) return true;
     const lowerRaw = rawText.toLowerCase();
-    return synonyms.some((syn) => lowerRaw.includes(syn));
+    return synonyms.some((syn) => lowerRaw.includes(syn.toLowerCase()));
   });
 
   const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));

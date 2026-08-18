@@ -34,32 +34,115 @@ const DEFAULT_TJI_ROLES: JobRole[] = [
 ];
 
 const TECH_SYNONYMS: Record<string, string[]> = {
-  'react': ['react', 'reactjs', 'react.js', 'redux', 'next.js', 'nextjs', 'jsx', 'frontend'],
-  'typescript': ['typescript', 'ts', 'type script'],
-  'javascript': ['javascript', 'js', 'es6', 'ecmascript'],
-  'node.js': ['node', 'nodejs', 'node.js', 'express', 'express.js', 'nest', 'nestjs', 'backend'],
-  'express': ['express', 'expressjs', 'express.js', 'node.js', 'nodejs', 'koa', 'fastify'],
-  'postgresql': ['postgres', 'postgresql', 'sql', 'psql', 'relational database', 'database', 'rdbms', 'mysql'],
-  'rest api': ['rest', 'restful', 'api', 'apis', 'graphql', 'json', 'endpoints', 'microservices'],
-  'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap', 'styling', 'html/css', 'ui'],
-  'html': ['html', 'html5', 'web', 'dom'],
+  'react': ['react', 'reactjs', 'react.js', 'react js', 'redux', 'next.js', 'nextjs', 'jsx', 'frontend', 'ui'],
+  'typescript': ['typescript', 'ts', 'type script', 'javascript', 'js', 'python'],
+  'javascript': ['javascript', 'js', 'es6', 'ecmascript', 'typescript', 'ts', 'python'],
+  'node.js': ['node', 'nodejs', 'node.js', 'node js', 'node-js', 'express', 'express.js', 'expressjs', 'backend development', 'backend', 'server'],
+  'express': ['express', 'express.js', 'expressjs', 'express js', 'express-js', 'node.js', 'nodejs', 'node', 'fastify', 'koa'],
+  'postgresql': ['postgres', 'postgresql', 'sql', 'psql', 'mysql', 'relational database', 'databases', 'database', 'rdbms', 'sqlite'],
+  'rest api': ['rest api', 'rest api design', 'rest', 'restful', 'api', 'apis', 'restful api', 'restful apis', 'api design', 'redis', 'graphql', 'microservices'],
+  'css': ['css', 'css3', 'tailwind', 'sass', 'scss', 'bootstrap', 'styling', 'html/css', 'ui', 'frontend'],
+  'html': ['html', 'html5', 'web', 'dom', 'frontend'],
 };
 
 async function readTextFromFile(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const buffer = reader.result as ArrayBuffer;
         const bytes = new Uint8Array(buffer);
-        let text = '';
+        const textDecoder = new TextDecoder('utf-8', { fatal: false });
+        let text = textDecoder.decode(bytes);
+
+        // 1. Extract all printable ASCII/UTF-8 characters
+        let printable = '';
         for (let i = 0; i < bytes.length; i++) {
           const b = bytes[i];
           if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
-            text += String.fromCharCode(b);
+            printable += String.fromCharCode(b);
+          } else if (printable.length > 0 && printable[printable.length - 1] !== ' ') {
+            printable += ' ';
           }
         }
-        resolve(text);
+
+        // 2. Decompress PDF streams using browser native DecompressionStream if available
+        let decompressedText = '';
+        if (typeof DecompressionStream !== 'undefined') {
+          let searchIdx = 0;
+          while (searchIdx < bytes.length) {
+            let streamStart = -1;
+            for (let i = searchIdx; i <= bytes.length - 6; i++) {
+              if (
+                bytes[i] === 115 && // 's'
+                bytes[i + 1] === 116 && // 't'
+                bytes[i + 2] === 114 && // 'r'
+                bytes[i + 3] === 101 && // 'e'
+                bytes[i + 4] === 97 && // 'a'
+                bytes[i + 5] === 109 // 'm'
+              ) {
+                streamStart = i + 6;
+                break;
+              }
+            }
+            if (streamStart === -1) break;
+
+            while (streamStart < bytes.length && (bytes[streamStart] === 10 || bytes[streamStart] === 13 || bytes[streamStart] === 32)) {
+              streamStart++;
+            }
+
+            let streamEndPos = -1;
+            for (let i = streamStart; i <= bytes.length - 9; i++) {
+              if (
+                bytes[i] === 101 && // 'e'
+                bytes[i + 1] === 110 && // 'n'
+                bytes[i + 2] === 100 && // 'd'
+                bytes[i + 3] === 115 && // 's'
+                bytes[i + 4] === 116 && // 't'
+                bytes[i + 5] === 114 && // 'r'
+                bytes[i + 6] === 101 && // 'e'
+                bytes[i + 7] === 97 && // 'a'
+                bytes[i + 8] === 109 // 'm'
+              ) {
+                streamEndPos = i;
+                break;
+              }
+            }
+            if (streamEndPos === -1) break;
+
+            const streamChunk = bytes.slice(streamStart, streamEndPos);
+            searchIdx = streamEndPos + 9;
+
+            if (streamChunk.length > 4) {
+              try {
+                const ds = new DecompressionStream('deflate-raw');
+                const writer = ds.writable.getWriter();
+                writer.write(streamChunk);
+                writer.close();
+                const res = new Response(ds.readable);
+                const decBuf = await res.arrayBuffer();
+                decompressedText += ' ' + textDecoder.decode(decBuf);
+              } catch {
+                try {
+                  const ds2 = new DecompressionStream('deflate');
+                  const writer2 = ds2.writable.getWriter();
+                  writer2.write(streamChunk);
+                  writer2.close();
+                  const res2 = new Response(ds2.readable);
+                  const decBuf2 = await res2.arrayBuffer();
+                  decompressedText += ' ' + textDecoder.decode(decBuf2);
+                } catch {}
+              }
+            }
+          }
+        }
+
+        // 3. Extract text inside PDF parentheses (text operators)
+        const combined = `${text} ${printable} ${decompressedText}`;
+        const parenMatches = combined.match(/\(([^()]{2,100})\)/g) || [];
+        const parenText = parenMatches.map((m) => m.slice(1, -1)).join(' ');
+
+        resolve(`${combined} ${parenText}`);
       } catch {
         resolve('');
       }
@@ -122,7 +205,7 @@ export const TJILoginPage: React.FC = () => {
 
     for (const key of Object.keys(TECH_SYNONYMS)) {
       const syns = TECH_SYNONYMS[key] || [key];
-      if (syns.some((s) => lowerText.includes(s))) {
+      if (syns.some((s) => lowerText.includes(s.toLowerCase()))) {
         discoveredSkills.push(key);
       }
     }
@@ -170,7 +253,7 @@ export const TJILoginPage: React.FC = () => {
     });
     if (inParsed) return true;
     const lowerRaw = rawText.toLowerCase();
-    return synonyms.some((syn) => lowerRaw.includes(syn));
+    return synonyms.some((syn) => lowerRaw.includes(syn.toLowerCase()));
   });
 
   const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));
