@@ -176,10 +176,10 @@ export const NTJILoginPage: React.FC = () => {
   });
 
   const missingSkills = requiredSkills.filter((req) => !matchedSkills.includes(req));
-  const isEligible = Boolean(file) && matchedSkills.length > 0;
   const matchPercentage = requiredSkills.length > 0 
     ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
     : 0;
+  const isEligible = Boolean(file) && matchPercentage >= 50;
 
   const handleStartInterview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,7 +194,7 @@ export const NTJILoginPage: React.FC = () => {
     }
 
     if (!isEligible) {
-      setError(`⚠️ Not Eligible: Your resume does not match the required competencies for ${selectedRole.name}. Please select a matching role or update your resume.`);
+      setError(`⚠️ Not Eligible: Your resume matched ${matchPercentage}% of required competencies (minimum 50% required for ${selectedRole.name}). Please select a matching role or update your resume.`);
       return;
     }
 
@@ -541,7 +541,7 @@ export const NTJILoginPage: React.FC = () => {
             {file && selectedRole && (
               <div>
                 {isEligible ? (
-                  /* ✅ ELIGIBLE: Matching Skills Box */
+                  /* ✅ ELIGIBLE: Matching Skills Box (>= 50% Match) */
                   <div
                     style={{
                       background: 'rgba(74, 222, 128, 0.1)',
@@ -560,7 +560,7 @@ export const NTJILoginPage: React.FC = () => {
                         </strong>
                       </div>
                       <span style={{ background: '#22c55e', color: '#ffffff', padding: '0.25rem 0.75rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800 }}>
-                        {matchPercentage}% Skill Match
+                        {matchPercentage}% Match (Min 50% Met ✓)
                       </span>
                     </div>
 
@@ -594,7 +594,7 @@ export const NTJILoginPage: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  /* ⚠️ NOT ELIGIBLE: Prompt to update resume or change role */
+                  /* ⚠️ NOT ELIGIBLE: Under 50% Match */
                   <div
                     style={{
                       background: 'rgba(248, 113, 113, 0.15)',
@@ -609,10 +609,10 @@ export const NTJILoginPage: React.FC = () => {
                       <span style={{ fontSize: '1.6rem' }}>⚠️</span>
                       <div>
                         <strong style={{ color: '#fca5a5', fontSize: '1.05rem', display: 'block' }}>
-                          ELIGIBILITY STATUS: NOT ELIGIBLE FOR {selectedRole.name.toUpperCase()} (0% Match)
+                          ELIGIBILITY STATUS: NOT ELIGIBLE FOR {selectedRole.name.toUpperCase()} ({matchPercentage}% Match)
                         </strong>
                         <span style={{ fontSize: '0.84rem', color: '#f87171' }}>
-                          Your uploaded resume does not contain the mandatory required skills for this position.
+                          A minimum of <strong>50% matching competencies</strong> is required to qualify for this role. (Current: {matchPercentage}%)
                         </span>
                       </div>
                     </div>
@@ -622,7 +622,7 @@ export const NTJILoginPage: React.FC = () => {
                         ❌ Required Skills Missing in Your Resume:
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                        {requiredSkills.map((sk, idx) => (
+                        {missingSkills.map((sk, idx) => (
                           <span
                             key={idx}
                             style={{
@@ -651,11 +651,11 @@ export const NTJILoginPage: React.FC = () => {
                         color: '#fca5a5',
                       }}
                     >
-                      <strong style={{ fontSize: '0.92rem' }}>💡 Actions to Proceed:</strong>
+                      <strong style={{ fontSize: '0.92rem' }}>💡 Actions to Qualify:</strong>
                       <ol style={{ margin: '0.5rem 0 0.85rem 0', paddingLeft: '1.25rem', lineHeight: 1.6 }}>
                         <li>
                           <strong>Update Your Resume</strong>: Add your verified background &amp; competencies with{' '}
-                          <code>{requiredSkills.slice(0, 3).join(', ')}</code>, then re-upload below.
+                          <code>{missingSkills.slice(0, 3).join(', ')}</code>, then re-upload below.
                         </li>
                         <li>
                           <strong>OR Choose a Matching Role</strong>: Select another business track above that matches your extracted background{' '}
@@ -707,14 +707,14 @@ export const NTJILoginPage: React.FC = () => {
               }}
             >
               {!file
-                ? '📄 Please Upload Resume to Verify Eligibility'
+                ? '📄 Please Upload Resume to Verify Eligibility (Min. 50% Match)'
                 : isParsing
                 ? '⏳ AI Extracting & Matching Competencies...'
                 : !isEligible
-                ? '🚫 Not Eligible: Update Resume or Select Matching Role'
+                ? `🚫 Not Eligible: Only ${matchPercentage}% Match (Min. 50% Required)`
                 : loading
                 ? 'Initializing Qualifying Assessment with Matched Skills...'
-                : `🚀 Start Non-Technical Interview (${matchedSkills.length} Matched Skills Verified) ➔`}
+                : `🚀 Start Non-Technical Interview (${matchPercentage}% Match • ${matchedSkills.length} Matched Skills) ➔`}
             </button>
           </form>
         </div>
