@@ -12,10 +12,31 @@ const TJI_LANGUAGES = [
   { code: 'Kannada', label: 'Kannada (ಕನ್ನಡ)', icon: '💬', flag: '🇮🇳' },
 ];
 
+const DEFAULT_TJI_ROLES: JobRole[] = [
+  {
+    id: 'role-backend-dev',
+    name: 'Backend Developer',
+    track: 'TJI',
+    requiredSkills: ['Node.js', 'Express', 'PostgreSQL', 'REST API', 'TypeScript'],
+  },
+  {
+    id: 'role-frontend-dev',
+    name: 'Frontend Developer',
+    track: 'TJI',
+    requiredSkills: ['React', 'TypeScript', 'CSS', 'HTML', 'JavaScript'],
+  },
+  {
+    id: 'role-fullstack-dev',
+    name: 'Full Stack Developer',
+    track: 'TJI',
+    requiredSkills: ['React', 'Node.js', 'PostgreSQL', 'TypeScript', 'REST API'],
+  },
+];
+
 export const TJILoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [roles, setRoles] = useState<JobRole[]>([]);
-  const [selectedRole, setSelectedRole] = useState<JobRole | null>(null);
+  const [roles, setRoles] = useState<JobRole[]>(DEFAULT_TJI_ROLES);
+  const [selectedRole, setSelectedRole] = useState<JobRole | null>(DEFAULT_TJI_ROLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(TJI_LANGUAGES[0]);
 
   // Auto-extracted profile fields (No manual typing required)
@@ -33,11 +54,17 @@ export const TJILoginPage: React.FC = () => {
     api
       .get<{ roles: JobRole[] }>('/tracks/roles?track=TJI')
       .then((res) => {
-        const filtered = res.data.roles.filter((r) => !r.name.toLowerCase().includes('(hr round)'));
-        setRoles(filtered);
-        if (filtered.length > 0) setSelectedRole(filtered[0]);
+        if (res.data && res.data.roles && res.data.roles.length > 0) {
+          const filtered = res.data.roles.filter((r) => !r.name.toLowerCase().includes('(hr round)'));
+          if (filtered.length > 0) {
+            setRoles(filtered);
+            setSelectedRole((prev) => prev || filtered[0]);
+          }
+        }
       })
-      .catch(() => setError('Unable to load technical roles.'));
+      .catch((err) => {
+        console.warn('API roles load failed, using local defaults:', err);
+      });
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

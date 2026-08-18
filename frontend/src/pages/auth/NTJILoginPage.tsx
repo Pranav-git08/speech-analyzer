@@ -12,10 +12,31 @@ const NTJI_LANGUAGES = [
   { code: 'Kannada', label: 'Kannada (ಕನ್ನಡ)', icon: '💬', flag: '🇮🇳' },
 ];
 
+const DEFAULT_NTJI_ROLES: JobRole[] = [
+  {
+    id: 'role-hr-executive',
+    name: 'HR Executive',
+    track: 'NTJI',
+    requiredSkills: ['Recruitment', 'Communication', 'HR Policies', 'Onboarding'],
+  },
+  {
+    id: 'role-marketing',
+    name: 'Marketing Executive',
+    track: 'NTJI',
+    requiredSkills: ['Digital Marketing', 'SEO', 'Content Writing', 'Social Media'],
+  },
+  {
+    id: 'role-sales',
+    name: 'Sales Executive',
+    track: 'NTJI',
+    requiredSkills: ['Sales', 'Communication', 'Negotiation', 'CRM'],
+  },
+];
+
 export const NTJILoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [roles, setRoles] = useState<JobRole[]>([]);
-  const [selectedRole, setSelectedRole] = useState<JobRole | null>(null);
+  const [roles, setRoles] = useState<JobRole[]>(DEFAULT_NTJI_ROLES);
+  const [selectedRole, setSelectedRole] = useState<JobRole | null>(DEFAULT_NTJI_ROLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(NTJI_LANGUAGES[0]);
 
   // Auto-extracted profile fields (No manual typing required)
@@ -33,11 +54,17 @@ export const NTJILoginPage: React.FC = () => {
     api
       .get<{ roles: JobRole[] }>('/tracks/roles?track=NTJI')
       .then((res) => {
-        const filtered = res.data.roles.filter((r) => !r.name.toLowerCase().includes('(hr round)'));
-        setRoles(filtered);
-        if (filtered.length > 0) setSelectedRole(filtered[0]);
+        if (res.data && res.data.roles && res.data.roles.length > 0) {
+          const filtered = res.data.roles.filter((r) => !r.name.toLowerCase().includes('(hr round)'));
+          if (filtered.length > 0) {
+            setRoles(filtered);
+            setSelectedRole((prev) => prev || filtered[0]);
+          }
+        }
       })
-      .catch(() => setError('Unable to load non-technical roles.'));
+      .catch((err) => {
+        console.warn('API roles load failed, using local defaults:', err);
+      });
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
