@@ -1,8 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
+// Vite same-origin worker loader
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url';
 
-// Configure PDF.js worker
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 
 export interface ExtractedResumeData {
@@ -13,21 +14,21 @@ export interface ExtractedResumeData {
   skills: string[];
 }
 
-// Strict regex definitions for exact keyword matching (NO false positives)
+// Strict regex definitions for exact keyword matching
 const STRICT_SKILL_PATTERNS: Record<string, RegExp> = {
   // Technical Competencies
   'React': /\b(react|reactjs|react\.js|redux|nextjs|next\.js)\b/i,
   'TypeScript': /\b(typescript|type\s*script)\b/i,
-  'JavaScript': /\b(javascript|java\s*script|ecmascript|es6)\b/i,
+  'JavaScript': /\b(javascript|java\s*script|ecmascript|es6|web\s*development)\b/i,
   'Node.js': /\b(nodejs|node\.js|node\s*js|node-js)\b/i,
-  'Express': /\b(expressjs|express\.js|express\s*framework|express\s*middleware)\b/i,
-  'PostgreSQL': /\b(postgresql|postgres|psql)\b/i,
-  'REST API': /\b(rest\s*api|restful\s*api|rest\s*apis|restful\s*apis|rest\s*api\s*design|restful\s*web\s*services)\b/i,
-  'CSS': /\b(css|css3|sass|scss|tailwind|tailwindcss|bootstrap|styling)\b/i,
-  'HTML': /\b(html|html5)\b/i,
+  'Express': /\b(express|expressjs|express\.js|express\s*framework)\b/i,
+  'PostgreSQL': /\b(postgresql|postgres|psql|mysql|sql|relational\s*database|databases?)\b/i,
+  'REST API': /\b(rest\s*api|restful\s*api|rest\s*apis|restful\s*apis|rest\s*api\s*design|restful|api\s*design)\b/i,
+  'CSS': /\b(css|css3|sass|scss|tailwind|tailwindcss|bootstrap|styling|responsive\s*web)\b/i,
+  'HTML': /\b(html|html5|web\s*technologies|web\s*pages?)\b/i,
   'Python': /\b(python|python3|django|flask|fastapi)\b/i,
-  'SQL': /\b(sql|mysql|sqlite|postgresql|postgres|rdbms|relational\s*databases?)\b/i,
-  'Redis': /\b(redis|redis\s*cache|redis\s*queue)\b/i,
+  'SQL': /\b(sql|mysql|sqlite|postgresql|postgres|database|databases)\b/i,
+  'Redis': /\b(redis|redis\s*queue|redis\s*cache)\b/i,
   'MongoDB': /\b(mongodb|mongo\s*db|nosql)\b/i,
 
   // Non-Technical / Business Competencies
@@ -45,14 +46,82 @@ const STRICT_SKILL_PATTERNS: Record<string, RegExp> = {
   'Social Media': /\b(social\s*media|smm|instagram\s*marketing|linkedin\s*marketing|facebook\s*marketing|content\s*marketing)\b/i,
 };
 
+async function decompressPdfStreams(bytes: Uint8Array): Promise<string> {
+  let decompressedText = '';
+  if (typeof DecompressionStream === 'undefined') return '';
+
+  let searchIdx = 0;
+  while (searchIdx < bytes.length && searchIdx < 1500000) {
+    let streamStart = -1;
+    for (let i = searchIdx; i <= Math.min(bytes.length - 6, searchIdx + 200000); i++) {
+      if (
+        bytes[i] === 115 && bytes[i + 1] === 116 && bytes[i + 2] === 114 &&
+        bytes[i + 3] === 101 && bytes[i + 4] === 97 && bytes[i + 5] === 109
+      ) {
+        streamStart = i + 6;
+        break;
+      }
+    }
+    if (streamStart === -1) break;
+
+    while (streamStart < bytes.length && (bytes[streamStart] === 10 || bytes[streamStart] === 13 || bytes[streamStart] === 32)) {
+      streamStart++;
+    }
+
+    let streamEndPos = -1;
+    for (let i = streamStart; i <= Math.min(bytes.length - 9, streamStart + 300000); i++) {
+      if (
+        bytes[i] === 101 && bytes[i + 1] === 110 && bytes[i + 2] === 100 &&
+        bytes[i + 3] === 115 && bytes[i + 4] === 116 && bytes[i + 5] === 114 &&
+        bytes[i + 6] === 101 && bytes[i + 7] === 97 && bytes[i + 8] === 109
+      ) {
+        streamEndPos = i;
+        break;
+      }
+    }
+    if (streamEndPos === -1) break;
+
+    const streamChunk = bytes.slice(streamStart, streamEndPos);
+    searchIdx = streamEndPos + 9;
+
+    if (streamChunk.length > 10) {
+      try {
+        const ds = new DecompressionStream('deflate');
+        const writer = ds.writable.getWriter();
+        writer.write(streamChunk);
+        writer.close();
+        const res = new Response(ds.readable);
+        const decBuf = await res.arrayBuffer();
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        decompressedText += ' ' + decoder.decode(decBuf);
+      } catch {
+        try {
+          const ds2 = new DecompressionStream('deflate-raw');
+          const writer2 = ds2.writable.getWriter();
+          writer2.write(streamChunk);
+          writer2.close();
+          const res2 = new Response(ds2.readable);
+          const decBuf2 = await res2.arrayBuffer();
+          const decoder2 = new TextDecoder('utf-8', { fatal: false });
+          decompressedText += ' ' + decoder2.decode(decBuf2);
+        } catch {}
+      }
+    }
+  }
+  return decompressedText;
+}
+
 export async function extractResumeData(file: File): Promise<ExtractedResumeData> {
   let extractedText = '';
 
-  // 1. If PDF, use PDF.js to extract all pages cleanly
+  // 1. First attempt: PDF.js with same-origin Vite bundled worker
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     try {
       const buffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        useSystemFonts: true,
+      });
       const pdf = await loadingTask.promise;
 
       let fullText = '';
@@ -67,12 +136,12 @@ export async function extractResumeData(file: File): Promise<ExtractedResumeData
       }
       extractedText = fullText.trim();
     } catch (pdfErr) {
-      console.warn('PDF.js text parse failed, falling back to raw reader:', pdfErr);
+      console.warn('PDF.js text parse failed, falling back to stream reader:', pdfErr);
     }
   }
 
-  // 2. Fallback to raw text reader if extractedText is empty
-  if (!extractedText) {
+  // 2. Secondary attempt: Native browser DecompressionStream + ASCII extraction
+  if (!extractedText || extractedText.length < 50) {
     try {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
@@ -86,9 +155,11 @@ export async function extractResumeData(file: File): Promise<ExtractedResumeData
           printable += String.fromCharCode(b);
         }
       }
-      extractedText = `${raw} ${printable} ${file.name}`;
+
+      const streamText = await decompressPdfStreams(bytes);
+      extractedText = `${extractedText} ${raw} ${printable} ${streamText} ${file.name}`;
     } catch {
-      extractedText = file.name;
+      extractedText = extractedText || file.name;
     }
   }
 
@@ -119,7 +190,7 @@ export async function extractResumeData(file: File): Promise<ExtractedResumeData
     name = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Candidate';
   }
 
-  // 6. Extract Skills STRICTLY using regex with word boundaries (Zero cross-contamination)
+  // 6. Extract Skills STRICTLY using regex with word boundaries
   const skills: string[] = [];
   for (const [skillName, pattern] of Object.entries(STRICT_SKILL_PATTERNS)) {
     if (pattern.test(extractedText)) {
