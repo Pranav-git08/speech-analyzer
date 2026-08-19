@@ -252,6 +252,38 @@ export const RegisterPage: React.FC = () => {
     });
   };
 
+  const handleSmartBack = () => {
+    // 1. If currently in verified track selection screen, go back to code entry form
+    if (verifiedCodeInfo) {
+      setVerifiedCodeInfo(null);
+      return;
+    }
+    // 2. If in OTP verification step, go back to registration form
+    if (regStep === 'otp' || regStep === 'success') {
+      setRegStep('form');
+      setOtpError('');
+      return;
+    }
+    // 3. If in 'code_entry' mode, go back to 'signin'
+    if (mode === 'code_entry') {
+      setMode('signin');
+      setCodeError('');
+      return;
+    }
+    // 4. If in 'signin' mode, go back to 'register'
+    if (mode === 'signin') {
+      setMode('register');
+      setFormError('');
+      return;
+    }
+    // 5. Default browser history back (one step back)
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleLaunchTrack = (track: 'TJI' | 'NTJI') => {
     if (track === 'TJI') {
       navigate('/login/tji');
@@ -279,7 +311,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
+            onClick={handleSmartBack}
             style={styles.backBtn}
             title="Go back"
           >

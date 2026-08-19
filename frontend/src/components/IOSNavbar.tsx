@@ -113,7 +113,7 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
 
           {/* Going Back Option at the top left beside the logo */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => { if (window.history.length > 1) { navigate(-1); } else { navigate('/'); } }}
             style={{
               display: 'flex',
               alignItems: 'center',

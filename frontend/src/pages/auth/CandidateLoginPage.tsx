@@ -82,6 +82,23 @@ export const CandidateLoginPage: React.FC = () => {
     });
   };
 
+  const handleSmartBack = () => {
+    if (verifiedCodeInfo) {
+      setVerifiedCodeInfo(null);
+      return;
+    }
+    if (mode === 'unique_code') {
+      setMode('password');
+      setError('');
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleLaunchTrack = (track: 'TJI' | 'NTJI') => {
     if (track === 'TJI') {
       navigate('/login/tji');
@@ -97,8 +114,32 @@ export const CandidateLoginPage: React.FC = () => {
 
       <div style={styles.contentWrapper}>
         <div style={styles.card}>
-          <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={handleSmartBack}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#e2e8f0',
+                padding: '0.35rem 0.8rem',
+                borderRadius: '10px',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+              }}
+              title="Go back"
+            >
+              ← Back
+            </button>
             <div style={styles.iconCircle}>🔑</div>
+            <div style={{ width: '60px' }} />
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
             <h1 style={styles.title}>Candidate Portal Entry</h1>
             <p style={styles.subtitle}>
               Access your personalized AI interview portal with your credentials or unique GD access code.
