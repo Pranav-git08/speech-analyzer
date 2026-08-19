@@ -25,6 +25,7 @@ export const AptitudeRoundPage: React.FC = () => {
     total: number;
     score: number;
     percentage: number;
+    isPassed: boolean;
     sectionBreakdown: Record<string, { total: number; correct: number }>;
   } | null>(null);
 
@@ -52,10 +53,13 @@ export const AptitudeRoundPage: React.FC = () => {
       }
     });
 
+    const isPassed = correctCount >= 7; // Required: 7 out of 15 to pass
+
     const scoreData = {
       total: APTITUDE_QUESTIONS.length,
       score: correctCount,
       percentage: Math.round((correctCount / APTITUDE_QUESTIONS.length) * 100),
+      isPassed,
       sectionBreakdown: breakdown,
     };
 
@@ -266,27 +270,23 @@ export const AptitudeRoundPage: React.FC = () => {
                 <strong style={styles.infoVal}>15 Questions</strong>
               </div>
               <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>🎯 Sections</span>
-                <strong style={styles.infoVal}>3 Structured Sections</strong>
-              </div>
-              <div style={styles.infoItem}>
-                <span style={styles.infoLabel}>📊 Difficulty</span>
-                <strong style={styles.infoVal}>Easy ➔ Impossible</strong>
+                <span style={styles.infoLabel}>🎯 Qualification Cutoff</span>
+                <strong style={{ ...styles.infoVal, color: '#60a5fa' }}>Min 7 / 15 Correct</strong>
               </div>
             </div>
 
             {/* Section Summary */}
             <div style={styles.sectionSummaryBox}>
-              <h3 style={styles.sectionSummaryTitle}>Structured Syllabus & Sections:</h3>
+              <h3 style={styles.sectionSummaryTitle}>Assessment Structure:</h3>
               <ul style={styles.sectionList}>
                 <li>
-                  <strong>1. Mathematical Reasoning (5 Qs):</strong> Numerical series, algebra, probability, matrices, combinatorics.
+                  <strong>1. Mathematical Reasoning (5 Qs):</strong> Numerical series, geometry, probability, matrices, combinatorics.
                 </li>
                 <li>
-                  <strong>2. Time, Money & Logical Relationships (5 Qs):</strong> Speed/time, family trees, compound interest, work efficiency, clock synchronization.
+                  <strong>2. Time, Money & Logical Relationships (5 Qs):</strong> Speed/distance, family blood relations, interest models, work algorithms, clock cycles.
                 </li>
                 <li>
-                  <strong>3. English Vocabulary & Verbal Reasoning (5 Qs):</strong> Antonyms, sentence completion, analogies, double-blank nuances, philosophical syntax.
+                  <strong>3. English Vocabulary & Verbal Reasoning (5 Qs):</strong> Antonyms, contextual completions, analogies, double-blank nuances, philosophical syntax.
                 </li>
               </ul>
             </div>
@@ -351,41 +351,96 @@ export const AptitudeRoundPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── 3. COMPLETED RESULTS SCREEN ── */}
+      {/* ── 3. COMPLETED RESULTS SCREEN (PASS >= 7 vs REJECT < 7) ── */}
       {testState === 'completed' && finalScore && (
         <div style={styles.centerWrapper}>
-          <div style={styles.completedCard}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>🏆</div>
-            <h1 style={styles.mainTitle}>Aptitude Assessment Submitted!</h1>
-            <p style={styles.subtitle}>
-              Your responses have been recorded and computed in the candidate scoring ledger.
-            </p>
+          {finalScore.isPassed ? (
+            /* ── PASSED (Score >= 7) ── */
+            <div style={styles.completedCard}>
+              <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>🎉</div>
+              <h1 style={styles.mainTitle}>Congratulations! Aptitude Cleared</h1>
+              <p style={styles.subtitle}>
+                You have successfully met the qualification benchmark for VOXIS.AI assessment rounds.
+              </p>
 
-            <div style={styles.scoreCircle}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#60a5fa' }}>
-                {finalScore.score} <span style={{ fontSize: '1.25rem', color: '#94a3b8' }}>/ {finalScore.total}</span>
-              </div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#4ade80' }}>
-                {finalScore.percentage}% Overall Score
-              </div>
-            </div>
-
-            {/* Section Breakdown */}
-            <div style={styles.breakdownContainer}>
-              {Object.entries(finalScore.sectionBreakdown).map(([secName, secScore]) => (
-                <div key={secName} style={styles.breakdownRow}>
-                  <span style={{ color: '#cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}>{secName}</span>
-                  <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
-                    {secScore.correct} / {secScore.total}
-                  </strong>
+              <div style={styles.scoreCircle}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#60a5fa' }}>
+                  {finalScore.score} <span style={{ fontSize: '1.25rem', color: '#94a3b8' }}>/ {finalScore.total}</span>
                 </div>
-              ))}
-            </div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#4ade80' }}>
+                  ✓ {finalScore.percentage}% Score (Cutoff: 7 / 15)
+                </div>
+              </div>
 
-            <button onClick={() => navigate('/roles')} style={styles.startBtn}>
-              Proceed to Job Role Selection & Interview ➔
-            </button>
-          </div>
+              {/* Section Breakdown */}
+              <div style={styles.breakdownContainer}>
+                {Object.entries(finalScore.sectionBreakdown).map(([secName, secScore]) => (
+                  <div key={secName} style={styles.breakdownRow}>
+                    <span style={{ color: '#cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}>{secName}</span>
+                    <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                      {secScore.correct} / {secScore.total}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => navigate('/roles')} style={styles.startBtn}>
+                Proceed to Role Selection & Technical Interview ➔
+              </button>
+            </div>
+          ) : (
+            /* ── REJECTED (Score < 7) WITH POLITE & MOTIVATIONAL MESSAGE ── */
+            <div style={styles.rejectedCard}>
+              <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>💙</div>
+              <h1 style={styles.rejectedTitle}>Assessment Result & Feedback</h1>
+              <p style={styles.rejectedSubtitle}>
+                Thank you for your sincere participation in the VOXIS.AI Candidate Evaluation.
+              </p>
+
+              {/* Score Display */}
+              <div style={styles.rejectedScoreBox}>
+                <div style={{ fontSize: '2.3rem', fontWeight: 900, color: '#f87171' }}>
+                  {finalScore.score} <span style={{ fontSize: '1.2rem', color: '#94a3b8' }}>/ {finalScore.total}</span>
+                </div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fca5a5', marginTop: '0.25rem' }}>
+                  Qualification Cutoff: 7 / 15 correct answers
+                </div>
+              </div>
+
+              {/* Section Breakdown */}
+              <div style={styles.breakdownContainer}>
+                {Object.entries(finalScore.sectionBreakdown).map(([secName, secScore]) => (
+                  <div key={secName} style={styles.breakdownRow}>
+                    <span style={{ color: '#cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}>{secName}</span>
+                    <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>
+                      {secScore.correct} / {secScore.total}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+
+              {/* Polite & Motivational Message Box */}
+              <div style={styles.motivationalBox}>
+                <h3 style={{ margin: '0 0 0.6rem 0', color: '#93c5fd', fontSize: '1.05rem', fontWeight: 800 }}>
+                  🌱 Every Step is an Opportunity to Grow
+                </h3>
+                <p style={{ margin: '0 0 0.85rem 0', color: '#e2e8f0', fontSize: '0.92rem', lineHeight: 1.6 }}>
+                  While your current score did not meet the qualification threshold for this cycle, please remember that assessments capture a single moment in time—not your ultimate potential.
+                </p>
+                <blockquote style={styles.quoteBox}>
+                  <em>"Success is not final, failure is not fatal: it is the courage to continue that counts."</em>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.35rem' }}>— Winston Churchill</span>
+                </blockquote>
+                <p style={{ margin: '0.85rem 0 0 0', color: '#cbd5e1', fontSize: '0.88rem', lineHeight: 1.5 }}>
+                  We strongly encourage you to continue honing your mathematical reasoning, problem-solving, and verbal analytical skills. We look forward to welcoming your application in upcoming hiring cycles!
+                </p>
+              </div>
+
+              <button onClick={() => navigate('/')} style={styles.returnHomeBtn}>
+                Return to Candidate Home
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -429,45 +484,13 @@ export const AptitudeRoundPage: React.FC = () => {
           <div style={styles.examMainGrid}>
             {/* Left / Center: Question Panel */}
             <div style={styles.questionPanel}>
-              {/* Question Header: Section & Difficulty */}
+              {/* Question Header: Section & Progress (Difficulty Level Hidden) */}
               <div style={styles.questionMetaRow}>
                 <span style={styles.sectionBadge}>
                   {currentQuestion.section}
                 </span>
 
-                <span
-                  style={{
-                    ...styles.difficultyBadge,
-                    background:
-                      currentQuestion.difficulty === 'Easy'
-                        ? 'rgba(74, 222, 128, 0.15)'
-                        : currentQuestion.difficulty === 'Medium'
-                        ? 'rgba(251, 191, 36, 0.15)'
-                        : currentQuestion.difficulty === 'Hard'
-                        ? 'rgba(249, 115, 22, 0.15)'
-                        : 'rgba(239, 68, 68, 0.2)',
-                    borderColor:
-                      currentQuestion.difficulty === 'Easy'
-                        ? '#4ade80'
-                        : currentQuestion.difficulty === 'Medium'
-                        ? '#fbbf24'
-                        : currentQuestion.difficulty === 'Hard'
-                        ? '#fb923c'
-                        : '#f87171',
-                    color:
-                      currentQuestion.difficulty === 'Easy'
-                        ? '#4ade80'
-                        : currentQuestion.difficulty === 'Medium'
-                        ? '#fbbf24'
-                        : currentQuestion.difficulty === 'Hard'
-                        ? '#fb923c'
-                        : '#f87171',
-                  }}
-                >
-                  Difficulty: {currentQuestion.difficulty}
-                </span>
-
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: 'auto' }}>
+                <span style={{ fontSize: '0.88rem', color: '#cbd5e1', marginLeft: 'auto', fontWeight: 700 }}>
                   Question {currentIdx + 1} of {APTITUDE_QUESTIONS.length}
                 </span>
               </div>
@@ -710,7 +733,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '1rem',
     marginBottom: '1.75rem',
   },
@@ -832,6 +855,62 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(74, 222, 128, 0.25)',
   },
+  rejectedCard: {
+    background: 'rgba(15, 23, 42, 0.9)',
+    backdropFilter: 'blur(30px)',
+    border: '1px solid rgba(96, 165, 250, 0.3)',
+    borderRadius: '24px',
+    padding: '3rem 2.25rem',
+    textAlign: 'center',
+    boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(96, 165, 250, 0.15)',
+  },
+  rejectedTitle: {
+    fontSize: '2rem',
+    fontWeight: 900,
+    color: '#ffffff',
+    margin: '0 0 0.5rem 0',
+  },
+  rejectedSubtitle: {
+    fontSize: '0.94rem',
+    color: '#cbd5e1',
+    margin: '0 0 1.75rem 0',
+  },
+  rejectedScoreBox: {
+    background: 'rgba(239, 68, 68, 0.12)',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+    borderRadius: '20px',
+    padding: '1.25rem',
+    maxWidth: '280px',
+    margin: '0 auto 1.75rem auto',
+  },
+  motivationalBox: {
+    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(124, 58, 237, 0.12) 100%)',
+    border: '1px solid rgba(96, 165, 250, 0.3)',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    textAlign: 'left',
+    marginBottom: '2rem',
+  },
+  quoteBox: {
+    margin: '0.75rem 0',
+    padding: '0.75rem 1.25rem',
+    background: 'rgba(0, 0, 0, 0.25)',
+    borderLeft: '4px solid #60a5fa',
+    borderRadius: '0 10px 10px 0',
+    color: '#fef08a',
+    fontSize: '0.92rem',
+  },
+  returnHomeBtn: {
+    background: 'rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.25)',
+    color: '#ffffff',
+    padding: '0.9rem 2.25rem',
+    borderRadius: '14px',
+    fontWeight: 800,
+    fontSize: '0.96rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
   scoreCircle: {
     background: 'rgba(255, 255, 255, 0.05)',
     border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -931,13 +1010,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(96, 165, 250, 0.15)',
     color: '#93c5fd',
     border: '1px solid rgba(96, 165, 250, 0.4)',
-    padding: '0.35rem 0.85rem',
-    borderRadius: '10px',
-    fontSize: '0.82rem',
-    fontWeight: 800,
-  },
-  difficultyBadge: {
-    border: '1px solid',
     padding: '0.35rem 0.85rem',
     borderRadius: '10px',
     fontSize: '0.82rem',
