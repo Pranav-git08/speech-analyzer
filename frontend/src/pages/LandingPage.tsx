@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { sendOtpEmail } from '../utils/emailService';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../components/GlassCanvas3D';
+import { sendOtpEmail } from '../utils/emailService';
 import {
   registerCandidate,
   loginCandidate,
@@ -28,7 +28,6 @@ const LandingPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   // OTP states
-  const [generatedOTP, setGeneratedOTP] = useState('');
   const [enteredOTP, setEnteredOTP] = useState('');
   const [otpError, setOtpError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
@@ -100,7 +99,7 @@ const LandingPage: React.FC = () => {
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFormError('Please enter a valid email address (e.g. john.miller@example.com).');
+      setFormError('Please enter a valid email address (e.g. alex.smith@example.com).');
       return;
     }
     if (isEmailRegistered(email.trim())) {
@@ -123,8 +122,7 @@ const LandingPage: React.FC = () => {
     setSubmitting(true);
     const otp = sendRegistrationOTP(email, phone);
     sendOtpEmail(email, fullName, otp);
-    sendOtpEmail(email, fullName, otp);
-    setGeneratedOTP(otp);
+
     setResendTimer(60);
     setEnteredOTP('');
     setOtpError('');
@@ -136,7 +134,7 @@ const LandingPage: React.FC = () => {
   const handleResendOTP = () => {
     if (resendTimer > 0) return;
     const otp = sendRegistrationOTP(email, phone);
-    setGeneratedOTP(otp);
+    sendOtpEmail(email, fullName, otp);
     setResendTimer(60);
     setOtpError('');
   };
@@ -147,7 +145,7 @@ const LandingPage: React.FC = () => {
     setOtpError('');
 
     if (!enteredOTP.trim() || enteredOTP.trim().length !== 6) {
-      setOtpError('Please enter the complete 6-digit verification code.');
+      setOtpError('Please enter the complete 6-digit verification code sent to your email.');
       return;
     }
 
@@ -156,7 +154,7 @@ const LandingPage: React.FC = () => {
 
     if (!verification.valid) {
       setSubmitting(false);
-      setOtpError(verification.error || 'Invalid OTP code.');
+      setOtpError(verification.error || 'Invalid OTP code. Please check your email inbox.');
       return;
     }
 
@@ -239,10 +237,9 @@ const LandingPage: React.FC = () => {
           /* SUCCESS SCREEN */
           <div style={styles.successCard}>
             <div style={styles.successIcon}>🎉</div>
-            <h2 style={styles.successTitle}>Registration & Verification Complete!</h2>
+            <h2 style={styles.successTitle}>Email Verified & Registered!</h2>
             <p style={styles.successDesc}>
-              Welcome, <strong style={{ color: '#ffffff' }}>{fullName}</strong>! Your email{' '}
-              <strong style={{ color: '#93c5fd' }}>{email}</strong> and phone have been successfully verified.
+              Welcome, <strong style={{ color: '#ffffff' }}>{fullName}</strong>! Your account has been verified and registered.
             </p>
 
             <button onClick={handleProceedToAssessment} style={styles.primaryBtn}>
@@ -250,43 +247,25 @@ const LandingPage: React.FC = () => {
             </button>
           </div>
         ) : regStep === 'otp' ? (
-          /* OTP VERIFICATION MODAL / VIEW */
+          /* OTP VERIFICATION VIEW (CODE IS IN USER'S EMAIL) */
           <div style={styles.authCard}>
             <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-              <div style={styles.iconCircle}>📱</div>
-              <h1 style={styles.authTitle}>Verify Email & Phone</h1>
+              <div style={styles.iconCircle}>📬</div>
+              <h1 style={styles.authTitle}>Check Your Email</h1>
               <p style={styles.authSubtitle}>
-                We sent a 6-digit confirmation OTP to <strong style={{ color: '#93c5fd' }}>{email}</strong> and{' '}
-                <strong style={{ color: '#93c5fd' }}>{phone}</strong>.
+                We have sent a 6-digit confirmation code to:
               </p>
-            </div>
-
-            {/* Simulated Live OTP Notice Box */}
-            <div style={styles.otpBanner}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                <span style={{ fontSize: '1.1rem' }}>💬</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fef08a' }}>
-                  Verification Code Notice
-                </span>
-              </div>
-              <div style={{ fontSize: '0.86rem', color: '#e2e8f0' }}>
-                Your code is: <strong style={styles.otpCodeBadge}>{generatedOTP}</strong>
-                <button
-                  type="button"
-                  onClick={() => setEnteredOTP(generatedOTP)}
-                  style={styles.autoFillBtn}
-                  title="Click to auto-fill code"
-                >
-                  Auto-fill 📋
-                </button>
-              </div>
+              <div style={styles.emailBadge}>{email}</div>
+              <p style={{ ...styles.authSubtitle, fontSize: '0.82rem', marginTop: '0.5rem', color: '#94a3b8' }}>
+                Please check your inbox (and Spam/Junk folder) and enter the code below.
+              </p>
             </div>
 
             {otpError && <div style={styles.errorBanner}>{otpError}</div>}
 
             <form onSubmit={handleVerifyOTP}>
               <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                <label style={{ ...styles.label, marginBottom: '0.75rem' }}>Enter 6-Digit OTP Code</label>
+                <label style={{ ...styles.label, marginBottom: '0.75rem' }}>Enter 6-Digit Email OTP</label>
                 <input
                   type="text"
                   maxLength={6}
@@ -306,15 +285,15 @@ const LandingPage: React.FC = () => {
                   opacity: submitting ? 0.7 : 1,
                 }}
               >
-                {submitting ? 'Verifying...' : 'Verify OTP & Complete Registration ➔'}
+                {submitting ? 'Verifying Code...' : 'Verify OTP & Complete Registration ➔'}
               </button>
 
               <div style={styles.footerNote}>
                 {resendTimer > 0 ? (
-                  <span style={{ color: '#94a3b8' }}>Resend code in {resendTimer}s</span>
+                  <span style={{ color: '#94a3b8' }}>Resend email code in {resendTimer}s</span>
                 ) : (
                   <button type="button" onClick={handleResendOTP} style={styles.switchBtn}>
-                    🔄 Resend OTP Code
+                    🔄 Resend OTP Email
                   </button>
                 )}
                 <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
@@ -326,7 +305,7 @@ const LandingPage: React.FC = () => {
                   }}
                   style={styles.switchBtn}
                 >
-                  ✏️ Edit Details
+                  ✏️ Change Email
                 </button>
               </div>
             </form>
@@ -376,8 +355,8 @@ const LandingPage: React.FC = () => {
               </h1>
               <p style={styles.authSubtitle}>
                 {mode === 'register'
-                  ? 'Submit your details to receive an OTP confirmation and enter the assessment portal.'
-                  : 'Enter your verified email and password to access your assessment.'}
+                  ? 'Submit your details to receive an email confirmation OTP and create your account.'
+                  : 'Enter your registered email and password to access your assessment.'}
               </p>
             </div>
 
@@ -394,7 +373,7 @@ const LandingPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Johnathan Miller"
+                    placeholder="e.g. Alex Smith"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     style={styles.input}
@@ -416,7 +395,7 @@ const LandingPage: React.FC = () => {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. john.miller@example.com"
+                    placeholder="e.g. alex.smith@example.com"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
                     style={{
@@ -524,7 +503,7 @@ const LandingPage: React.FC = () => {
                     cursor: submitting || emailError ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {submitting ? 'Sending OTP...' : 'Send Confirmation OTP ➔'}
+                  {submitting ? 'Sending OTP to Email...' : 'Send Confirmation OTP to Email ➔'}
                 </button>
 
                 {/* Switch to Sign In */}
@@ -550,7 +529,7 @@ const LandingPage: React.FC = () => {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. john.miller@example.com"
+                    placeholder="e.g. alex.smith@example.com"
                     value={signInEmail}
                     onChange={(e) => setSignInEmail(e.target.value)}
                     style={styles.input}
@@ -731,6 +710,17 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     margin: 0,
   },
+  emailBadge: {
+    display: 'inline-block',
+    background: 'rgba(96, 165, 250, 0.15)',
+    color: '#93c5fd',
+    border: '1px solid rgba(96, 165, 250, 0.4)',
+    padding: '0.35rem 1rem',
+    borderRadius: '999px',
+    fontWeight: 800,
+    fontSize: '0.92rem',
+    marginTop: '0.5rem',
+  },
   grid2: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -797,33 +787,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 10px 30px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-  },
-  otpBanner: {
-    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
-    border: '1px solid rgba(96, 165, 250, 0.35)',
-    borderRadius: '14px',
-    padding: '0.85rem 1.1rem',
-    marginBottom: '1.5rem',
-  },
-  otpCodeBadge: {
-    background: 'rgba(255, 255, 255, 0.15)',
-    padding: '0.2rem 0.55rem',
-    borderRadius: '8px',
-    color: '#fef08a',
-    fontSize: '1rem',
-    letterSpacing: '0.1em',
-    marginLeft: '0.4rem',
-  },
-  autoFillBtn: {
-    marginLeft: '0.75rem',
-    background: 'rgba(96, 165, 250, 0.25)',
-    border: '1px solid rgba(96, 165, 250, 0.5)',
-    color: '#93c5fd',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    borderRadius: '6px',
-    padding: '0.2rem 0.5rem',
-    cursor: 'pointer',
   },
   errorBanner: {
     background: 'rgba(239, 68, 68, 0.15)',

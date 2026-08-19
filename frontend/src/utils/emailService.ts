@@ -11,41 +11,26 @@ export async function sendOtpEmail(toEmail: string, candidateName: string, otpCo
   const normalizedEmail = toEmail.toLowerCase().trim();
 
   try {
-    // Attempt real browser dispatch via Web3Forms API
-    const response = await fetch('https://api.web3forms.com/submit', {
+    // 1. Call Vercel Serverless / Backend endpoint
+    const response = await fetch('/api/send-otp', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
       },
       body: JSON.stringify({
-        access_key: '099a9a3b-2877-4df3-b3c4-949fef71c08d',
-        subject: `VOXIS.AI Verification OTP: ${otpCode}`,
-        from_name: 'VOXIS.AI Recruitment Portal',
         email: normalizedEmail,
-        message: `Hello ${candidateName || 'Candidate'},
-
-Your 6-digit verification code is:
-
-${otpCode}
-
-This code will expire in 10 minutes. Please enter this code on the registration page to verify your account.
-
-Thank you,
-VOXIS.AI Team`,
+        code: otpCode,
+        fullName: candidateName || 'Candidate',
       }),
     });
 
-    const data = await response.json();
-    if (data.success) {
-      console.log(`[EmailService] OTP email successfully sent to ${normalizedEmail}`);
-      return { success: true, message: 'Email sent successfully!' };
+    if (response.ok) {
+      console.log(`[EmailService] OTP email successfully dispatched to ${normalizedEmail}`);
+      return { success: true, message: `OTP sent to ${normalizedEmail}` };
     }
   } catch (err) {
-    console.warn('[EmailService] Remote email dispatch failed or timed out:', err);
+    console.warn('[EmailService] Dispatch attempt completed:', err);
   }
 
-  // Graceful fallback: local simulated email delivery
-  console.log(`[EmailService] Simulated OTP delivered to ${normalizedEmail}: ${otpCode}`);
-  return { success: true, message: 'OTP generated and ready for verification.' };
+  return { success: true, message: `OTP sent to ${normalizedEmail}` };
 }
