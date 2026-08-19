@@ -199,11 +199,11 @@ const LandingPage: React.FC = () => {
       return;
     }
 
-    navigate('/roles');
+    navigate('/aptitude');
   };
 
   const handleProceedToAssessment = () => {
-    navigate('/roles');
+    navigate('/aptitude');
   };
 
   return (
@@ -243,7 +243,7 @@ const LandingPage: React.FC = () => {
             </p>
 
             <button onClick={handleProceedToAssessment} style={styles.primaryBtn}>
-              Enter Assessment Room ➔
+              Enter Aptitude Assessment Round ➔
             </button>
           </div>
         ) : regStep === 'otp' ? (

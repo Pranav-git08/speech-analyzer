@@ -36,7 +36,7 @@ export const CandidateLoginPage: React.FC = () => {
     }
 
     // Redirect to assessment setup
-    navigate('/roles');
+    navigate('/aptitude');
   };
 
   return (
