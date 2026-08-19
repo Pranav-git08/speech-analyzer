@@ -10,10 +10,11 @@ import { AdminLoginPage } from './pages/auth/AdminLoginPage';
 import { TJILoginPage } from './pages/auth/TJILoginPage';
 import { NTJILoginPage } from './pages/auth/NTJILoginPage';
 import { HRLoginPage } from './pages/auth/HRLoginPage';
-import { GDLoginPage } from './pages/auth/GDLoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { CandidateLoginPage } from './pages/auth/CandidateLoginPage';
 import { AptitudeRoundPage } from './pages/AptitudeRoundPage';
+import { AdminGDPage } from './pages/admin/AdminGDPage';
+import { GDCandidatePortalPage } from './pages/GDCandidatePortalPage';
 import MicTestPage from './pages/MicTestPage';
 import GestureSystem from './components/GestureSystem';
 
@@ -37,13 +38,15 @@ const App: React.FC = () => {
         <Route path="/tji" element={<TJILoginPage />} />
         <Route path="/login/ntji" element={<NTJILoginPage />} />
         <Route path="/ntji" element={<NTJILoginPage />} />
-        <Route path="/login/gd" element={<GDLoginPage />} />
-        <Route path="/gd" element={<GDLoginPage />} />
+        <Route path="/login/gd" element={<GDCandidatePortalPage />} />
+        <Route path="/gd" element={<GDCandidatePortalPage />} />
+        <Route path="/gd-cohort" element={<GDCandidatePortalPage />} />
         <Route path="/login/hr" element={<HRLoginPage />} />
         <Route path="/hr" element={<HRLoginPage />} />
         <Route path="/hr-round" element={<HRLoginPage />} />
         <Route path="/login/admin" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminCandidateListPage />} />
+        <Route path="/admin/gd" element={<AdminGDPage />} />
         <Route path="/admin/candidates" element={<AdminCandidateListPage />} />
         <Route path="/candidates" element={<AdminCandidateListPage />} />
         <Route path="/admin/candidate/:id" element={<AdminCandidateDetailPage />} />

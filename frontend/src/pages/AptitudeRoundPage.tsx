@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../components/GlassCanvas3D';
 import { APTITUDE_QUESTIONS } from '../data/aptitudeQuestions';
 import { getCurrentUser } from '../utils/userStore';
+import { enrollCandidateInGD } from '../utils/gdStore';
 
 type TestState = 'instructions' | 'in_progress' | 'terminated' | 'completed';
 
@@ -55,6 +56,18 @@ export const AptitudeRoundPage: React.FC = () => {
 
     const isPassed = correctCount >= 7; // Required: 7 out of 15 to pass
 
+    if (isPassed && currentUser) {
+      enrollCandidateInGD({
+        id: currentUser.id,
+        fullName: currentUser.fullName,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        aptitudeScore: correctCount,
+        aptitudeTotal: APTITUDE_QUESTIONS.length,
+        preferredTrack: currentUser.preferredTrack,
+      });
+    }
+
     const scoreData = {
       total: APTITUDE_QUESTIONS.length,
       score: correctCount,
@@ -65,7 +78,7 @@ export const AptitudeRoundPage: React.FC = () => {
 
     setFinalScore(scoreData);
     return scoreData;
-  }, [selectedAnswers]);
+  }, [selectedAnswers, currentUser]);
 
   // ── 2. Handle Violations (Tab Switch / Window Blur) ───────────────────────
   const handleViolation = useCallback(
@@ -384,8 +397,8 @@ export const AptitudeRoundPage: React.FC = () => {
                 ))}
               </div>
 
-              <button onClick={() => navigate('/roles')} style={styles.startBtn}>
-                Proceed to Role Selection & Technical Interview ➔
+              <button onClick={() => navigate('/gd')} style={styles.startBtn}>
+                Proceed to Stage 2: GD (Group Discussion) Round ➔
               </button>
             </div>
           ) : (

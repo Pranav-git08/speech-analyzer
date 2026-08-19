@@ -400,7 +400,20 @@ const AdminCandidateListPage: React.FC = () => {
             <h1 style={styles.title}>Admin Dashboard</h1>
             <p style={styles.subtitle}>Unified Candidate Evaluation & Recruitment Management</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              style={{
+                ...styles.refreshBtn,
+                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+                color: '#ffffff',
+                boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
+              }}
+              onClick={() => navigate('/admin/gd')}
+              title="Manage 5-Candidate GD Cohorts, Venue Scheduling & Approvals"
+            >
+              🛡️ GD Cohort Hub (5-Member Batches) ➔
+            </button>
             <button
               style={styles.refreshBtn}
               onClick={fetchCandidates}
