@@ -271,11 +271,20 @@ const LandingPage: React.FC = () => {
       {/* Top Floating Glass Header */}
       <header style={styles.topHeader}>
         <div style={styles.logoRow}>
-          <div style={styles.logoIcon}>🎙️</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
-            <span style={styles.proPill}>PRO</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <div style={styles.logoIcon}>🎙️</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
+              <span style={styles.proPill}>PRO</span>
+            </div>
           </div>
+          <button
+            onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
+            style={styles.backBtn}
+            title="Go back"
+          >
+            ← Back
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -814,7 +823,21 @@ const styles: Record<string, React.CSSProperties> = {
   logoRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
+    gap: '0.85rem',
+  },
+  backBtn: {
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: '#e2e8f0',
+    padding: '0.35rem 0.8rem',
+    borderRadius: '10px',
+    fontSize: '0.8rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.3rem',
+    transition: 'all 0.2s ease',
   },
   logoIcon: {
     width: '38px',

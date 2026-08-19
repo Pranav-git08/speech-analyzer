@@ -8,9 +8,6 @@ import { extractResumeData } from '../../utils/resumeExtractor';
 
 const TJI_LANGUAGES = [
   { code: 'English', label: 'English (Global Standard)', icon: '🌐', flag: '🇬🇧' },
-  { code: 'Telugu', label: 'Telugu (తెలుగు)', icon: '🗣️', flag: '🇮🇳' },
-  { code: 'Hindi', label: 'Hindi (हिंदी)', icon: '🎙️', flag: '🇮🇳' },
-  { code: 'Kannada', label: 'Kannada (ಕನ್ನಡ)', icon: '💬', flag: '🇮🇳' },
 ];
 
 const DEFAULT_TJI_ROLES: JobRole[] = [

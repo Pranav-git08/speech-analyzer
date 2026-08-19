@@ -44,9 +44,18 @@ export const GDCandidatePortalPage: React.FC = () => {
       {/* Top Header */}
       <header style={styles.header}>
         <div style={styles.logoRow}>
-          <div style={styles.logoIcon}>🎙️</div>
-          <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
-          <span style={styles.stagePill}>STAGE 2: GROUP DISCUSSION</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <div style={styles.logoIcon}>🎙️</div>
+            <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
+            <span style={styles.stagePill}>STAGE 2: GROUP DISCUSSION</span>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            style={styles.backBtn}
+            title="Go back to previous screen"
+          >
+            ← Back
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -268,7 +277,21 @@ const styles: Record<string, React.CSSProperties> = {
   logoRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.65rem',
+    gap: '0.85rem',
+  },
+  backBtn: {
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: '#e2e8f0',
+    padding: '0.35rem 0.8rem',
+    borderRadius: '10px',
+    fontSize: '0.8rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.3rem',
+    transition: 'all 0.2s ease',
   },
   logoIcon: {
     width: '36px',

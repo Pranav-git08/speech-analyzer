@@ -15,6 +15,20 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
 
   const isCurrent = (path: string) => location.pathname === path;
 
+  // Determine if on TJI, NTJI, GD, Aptitude, or Interview pages to hide registration option
+  const isInterviewOrAuthTrack = [
+    '/login/tji',
+    '/tji',
+    '/login/ntji',
+    '/ntji',
+    '/interview',
+    '/roles',
+    '/gd',
+    '/gd-cohort',
+    '/aptitude',
+    '/aptitude-round',
+  ].some((p) => location.pathname.startsWith(p));
+
   const openDiagnostic = (tab: DiagnosticTab) => {
     setInitialDiagTab(tab);
     setDiagnosticOpen(true);
@@ -47,63 +61,82 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
           border: '1px solid rgba(255, 255, 255, 0.18)',
         }}
       >
-        {/* Brand Logo & Title with Live Beacon */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.85rem',
-            cursor: 'pointer',
-          }}
-          onClick={() => navigate('/')}
-        >
+        {/* Brand Logo & Title with Live Beacon + Back Button on the Left */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #ec4899 100%)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.25rem',
-              boxShadow: '0 0 25px rgba(124, 58, 237, 0.6), inset 0 1px 1px rgba(255,255,255,0.6)',
-              border: '1px solid rgba(255,255,255,0.4)',
+              gap: '0.85rem',
+              cursor: 'pointer',
             }}
+            onClick={() => navigate('/')}
           >
-            🎙️
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.03em', color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>
-              VOXIS<span style={{ color: '#60a5fa' }}>.AI</span>
-            </span>
-            <span
+            <div
               style={{
-                fontSize: '0.65rem',
-                fontWeight: 900,
-                padding: '0.15rem 0.55rem',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(167, 139, 250, 0.25) 100%)',
-                color: '#93c5fd',
-                border: '1px solid rgba(96, 165, 250, 0.5)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                boxShadow: '0 0 10px rgba(96, 165, 250, 0.3)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #ec4899 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+                boxShadow: '0 0 25px rgba(124, 58, 237, 0.6), inset 0 1px 1px rgba(255,255,255,0.6)',
+                border: '1px solid rgba(255,255,255,0.4)',
               }}
             >
-              PRO
-            </span>
-            {/* Live Telemetry Beacon */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.25rem' }}>
-              <div className="telemetry-beacon" />
-              <span style={{ fontSize: '0.7rem', color: '#86efac', fontWeight: 800, letterSpacing: '0.02em' }}>
-                ONLINE
+              🎙️
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.03em', color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>
+                VOXIS<span style={{ color: '#60a5fa' }}>.AI</span>
+              </span>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 900,
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(167, 139, 250, 0.25) 100%)',
+                  color: '#93c5fd',
+                  border: '1px solid rgba(96, 165, 250, 0.5)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  boxShadow: '0 0 10px rgba(96, 165, 250, 0.3)',
+                }}
+              >
+                PRO
               </span>
             </div>
           </div>
+
+          {/* Going Back Option at the top left beside the logo */}
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#f1f5f9',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              padding: '0.38rem 0.85rem',
+              borderRadius: '12px',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+            }}
+            title="Go back to previous page"
+          >
+            <span>←</span> <span>Back</span>
+          </button>
         </div>
 
-        {/* Essential Pre-Interview Hardware Diagnostics & Admin Login */}
+        {/* Essential Pre-Interview Hardware Diagnostics & Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           {/* 1. Microphone Diagnostic */}
           <button
@@ -145,30 +178,23 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
             📶 System Check
           </button>
 
-          {/* 5. Candidate Register & Login Buttons */}
-          <button
-            onClick={() => navigate('/register')}
-            style={{
-              ...navBtnStyle(isCurrent('/register') || isCurrent('/signup'), '59, 130, 246'),
-              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.4) 0%, rgba(124, 58, 237, 0.4) 100%)',
-              color: '#ffffff',
-              border: '1.5px solid rgba(96, 165, 250, 0.6)',
-              boxShadow: '0 0 15px rgba(59, 130, 246, 0.35)',
-            }}
-            className="luxury-sheen-btn glass-clickable"
-            title="Candidate Account Registration"
-          >
-            📝 Register
-          </button>
-
-          <button
-            onClick={() => navigate('/login')}
-            style={navBtnStyle(isCurrent('/login'), '147, 51, 234')}
-            className="glass-clickable"
-            title="Candidate Sign In"
-          >
-            🔑 Sign In
-          </button>
+          {/* 5. Candidate Register Button (REMOVED/HIDDEN on TJI, NTJI, GD & Interview stages) */}
+          {!isInterviewOrAuthTrack && (
+            <button
+              onClick={() => navigate('/register')}
+              style={{
+                ...navBtnStyle(isCurrent('/register') || isCurrent('/signup'), '59, 130, 246'),
+                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.4) 0%, rgba(124, 58, 237, 0.4) 100%)',
+                color: '#ffffff',
+                border: '1.5px solid rgba(96, 165, 250, 0.6)',
+                boxShadow: '0 0 15px rgba(59, 130, 246, 0.35)',
+              }}
+              className="luxury-sheen-btn glass-clickable"
+              title="Candidate Account Registration"
+            >
+              📝 Register
+            </button>
+          )}
 
           {/* 6. Admin Console Login (Positioned at the very last) */}
           <button
