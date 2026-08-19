@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sendOtpEmail } from '../../utils/emailService';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
 import {
@@ -121,6 +122,7 @@ export const RegisterPage: React.FC = () => {
 
     setSubmitting(true);
     const otp = sendRegistrationOTP(email, phone);
+    sendOtpEmail(email, fullName, otp);
     setGeneratedOTP(otp);
     setResendTimer(60);
     setEnteredOTP('');
