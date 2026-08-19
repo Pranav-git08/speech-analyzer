@@ -35,12 +35,8 @@ export const CandidateLoginPage: React.FC = () => {
       return;
     }
 
-    // Redirect to candidate's track
-    if (result.user.preferredTrack === 'TJI') {
-      navigate('/login/tji');
-    } else {
-      navigate('/login/ntji');
-    }
+    // Redirect to assessment setup
+    navigate('/roles');
   };
 
   return (
@@ -66,7 +62,7 @@ export const CandidateLoginPage: React.FC = () => {
               <input
                 type="email"
                 required
-                placeholder="e.g. pranavvaidyam08@gmail.com"
+                placeholder="e.g. john.miller@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={styles.input}

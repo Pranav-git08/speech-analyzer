@@ -6,10 +6,9 @@ export interface RegisteredCandidate {
   email: string;
   phone: string;
   passwordHash: string;
-  preferredTrack: Track;
-  targetRole: string;
-  experienceLevel: string;
-  collegeOrCompany?: string;
+  isVerified: boolean;
+  preferredTrack?: Track;
+  targetRole?: string;
   registeredAt: string;
 }
 
@@ -18,14 +17,11 @@ export interface RegisterCandidateInput {
   email: string;
   phone: string;
   password: string;
-  preferredTrack: Track;
-  targetRole: string;
-  experienceLevel: string;
-  collegeOrCompany?: string;
 }
 
-const USERS_STORAGE_KEY = 'SPEECH_ANALYZER_REGISTERED_USERS';
-const CURRENT_USER_KEY = 'SPEECH_ANALYZER_CURRENT_USER';
+const USERS_STORAGE_KEY = 'SPEECH_ANALYZER_REGISTERED_USERS_V2';
+const CURRENT_USER_KEY = 'SPEECH_ANALYZER_CURRENT_USER_V2';
+const OTP_STORAGE_KEY = 'SPEECH_ANALYZER_PENDING_OTP';
 
 // Simple client-side hash function for secure local persistence
 function simpleHash(str: string): string {
@@ -33,46 +29,43 @@ function simpleHash(str: string): string {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
+    hash |= 0;
   }
   return 'h_' + Math.abs(hash).toString(16);
 }
 
 const DEFAULT_SEEDED_USERS: RegisteredCandidate[] = [
   {
-    id: 'user-pranav-01',
-    fullName: 'Srinivas Pranav Vaidyam',
-    email: 'pranavvaidyam08@gmail.com',
-    phone: '+91 95910 50952',
+    id: 'user-john-01',
+    fullName: 'Johnathan Miller',
+    email: 'john.miller@example.com',
+    phone: '+1 (555) 234-5678',
     passwordHash: simpleHash('password123'),
+    isVerified: true,
     preferredTrack: 'TJI',
-    targetRole: 'Frontend Developer',
-    experienceLevel: '1-3 Years',
-    collegeOrCompany: 'TechVision Solutions',
+    targetRole: 'Software Engineer',
     registeredAt: new Date(Date.now() - 86400000).toISOString(),
   },
   {
-    id: 'user-vishal-02',
-    fullName: 'Vishal Tore',
-    email: 'vishal.tore@devmail.com',
-    phone: '+91 98201 44321',
+    id: 'user-sarah-02',
+    fullName: 'Sarah Johnson',
+    email: 'sarah.johnson@example.com',
+    phone: '+1 (555) 876-5432',
     passwordHash: simpleHash('password123'),
+    isVerified: true,
     preferredTrack: 'TJI',
-    targetRole: 'Backend Developer',
-    experienceLevel: '3-5 Years',
-    collegeOrCompany: 'DevWorks Inc',
+    targetRole: 'Frontend Developer',
     registeredAt: new Date(Date.now() - 172800000).toISOString(),
   },
   {
-    id: 'user-ranjana-03',
-    fullName: 'Ranjana Mane',
-    email: 'ranjana.mane@techvision.com',
-    phone: '+91 97654 32109',
+    id: 'user-alex-03',
+    fullName: 'Alex Smith',
+    email: 'alex.smith@example.com',
+    phone: '+1 (555) 345-6789',
     passwordHash: simpleHash('password123'),
+    isVerified: true,
     preferredTrack: 'NTJI',
-    targetRole: 'Senior Sales Executive',
-    experienceLevel: '3-5 Years',
-    collegeOrCompany: 'TechVision Solutions Pvt. Ltd.',
+    targetRole: 'Account Executive',
     registeredAt: new Date(Date.now() - 259200000).toISOString(),
   },
 ];
@@ -98,6 +91,64 @@ export function isEmailRegistered(email: string): boolean {
   return users.some((u) => u.email.toLowerCase().trim() === normalized);
 }
 
+// ── OTP System ─────────────────────────────────────────────────────────────
+export interface PendingOTP {
+  email: string;
+  phone: string;
+  code: string;
+  expiresAt: number;
+}
+
+export function sendRegistrationOTP(email: string, phone: string): string {
+  const normalized = email.toLowerCase().trim();
+  // Generate random 6-digit OTP
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const pending: PendingOTP = {
+    email: normalized,
+    phone: phone.trim(),
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+  };
+  localStorage.setItem(OTP_STORAGE_KEY, JSON.stringify(pending));
+  console.log(`[OTP] Generated verification code for ${normalized}: ${code}`);
+  return code;
+}
+
+export function getPendingOTP(): PendingOTP | null {
+  try {
+    const raw = localStorage.getItem(OTP_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: PendingOTP = JSON.parse(raw);
+    if (Date.now() > parsed.expiresAt) {
+      localStorage.removeItem(OTP_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function verifyRegistrationOTP(email: string, userCode: string): { valid: boolean; error?: string } {
+  const normalized = email.toLowerCase().trim();
+  const pending = getPendingOTP();
+
+  if (!pending) {
+    return { valid: false, error: 'No active OTP found. Please request a new verification code.' };
+  }
+  if (pending.email !== normalized) {
+    return { valid: false, error: 'OTP is for a different email address.' };
+  }
+  if (pending.code !== userCode.trim()) {
+    return { valid: false, error: 'Invalid 6-digit OTP code. Please check and try again.' };
+  }
+
+  // Clear OTP after successful verification
+  localStorage.removeItem(OTP_STORAGE_KEY);
+  return { valid: true };
+}
+
+// ── Candidate Registration & Login ──────────────────────────────────────────
 export function registerCandidate(input: RegisterCandidateInput): {
   success: boolean;
   user?: RegisteredCandidate;
@@ -111,6 +162,9 @@ export function registerCandidate(input: RegisterCandidateInput): {
     if (!input.fullName.trim()) {
       return { success: false, error: 'Full name is required.' };
     }
+    if (!input.phone.trim()) {
+      return { success: false, error: 'Phone number is required.' };
+    }
     if (!input.password || input.password.length < 6) {
       return { success: false, error: 'Password must be at least 6 characters long.' };
     }
@@ -119,7 +173,7 @@ export function registerCandidate(input: RegisterCandidateInput): {
     if (isEmailRegistered(normalizedEmail)) {
       return {
         success: false,
-        error: `An account with the email "${normalizedEmail}" is already registered. Please log in instead or use another email.`,
+        error: `An account with the email "${normalizedEmail}" is already registered. Please log in instead.`,
       };
     }
 
@@ -127,12 +181,11 @@ export function registerCandidate(input: RegisterCandidateInput): {
       id: `user-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
       fullName: input.fullName.trim(),
       email: normalizedEmail,
-      phone: input.phone.trim() || '+91 95910 50952',
+      phone: input.phone.trim(),
       passwordHash: simpleHash(input.password),
-      preferredTrack: input.preferredTrack,
-      targetRole: input.targetRole || (input.preferredTrack === 'TJI' ? 'Frontend Developer' : 'Senior Sales Executive'),
-      experienceLevel: input.experienceLevel || '1-3 Years',
-      collegeOrCompany: input.collegeOrCompany?.trim(),
+      isVerified: true,
+      preferredTrack: 'TJI',
+      targetRole: 'Software Engineer',
       registeredAt: new Date().toISOString(),
     };
 

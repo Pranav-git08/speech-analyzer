@@ -1,46 +1,55 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { IOSNavbar } from '../../components/IOSNavbar';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
-import { registerCandidate, isEmailRegistered } from '../../utils/userStore';
-import { Track } from '../../types';
-
-const ROLES_BY_TRACK: Record<Track, string[]> = {
-  TJI: [
-    'Frontend Developer',
-    'Backend Developer',
-    'Full Stack Developer',
-    'Software Development Engineer (SDE)',
-    'DevOps / Cloud Engineer',
-  ],
-  NTJI: [
-    'Senior Sales Executive',
-    'HR Executive / Talent Acquisition',
-    'Marketing Specialist',
-    'Customer Success Manager',
-    'Business Development Executive',
-  ],
-};
+import {
+  registerCandidate,
+  loginCandidate,
+  isEmailRegistered,
+  sendRegistrationOTP,
+  verifyRegistrationOTP,
+} from '../../utils/userStore';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Mode: 'register' (default) or 'signin'
+  const [mode, setMode] = useState<'register' | 'signin'>('register');
+
+  // Registration step: 'form' | 'otp' | 'success'
+  const [regStep, setRegStep] = useState<'form' | 'otp' | 'success'>('form');
+
+  // Form fields
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [preferredTrack, setPreferredTrack] = useState<Track>('TJI');
-  const [targetRole, setTargetRole] = useState(ROLES_BY_TRACK.TJI[0]);
-  const [experienceLevel, setExperienceLevel] = useState('1-3 Years');
-  const [collegeOrCompany, setCollegeOrCompany] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(true);
 
+  // OTP states
+  const [generatedOTP, setGeneratedOTP] = useState('');
+  const [enteredOTP, setEnteredOTP] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resendTimer, setResendTimer] = useState(60);
+
+  // Sign In fields
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+
+  // Feedback states
   const [emailError, setEmailError] = useState('');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [registeredSuccess, setRegisteredSuccess] = useState(false);
+
+  // Resend OTP countdown timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (regStep === 'otp' && resendTimer > 0) {
+      timer = setInterval(() => setResendTimer((t) => t - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [regStep, resendTimer]);
 
   // Real-time email uniqueness check
   const handleEmailChange = (val: string) => {
@@ -49,9 +58,9 @@ export const RegisterPage: React.FC = () => {
       setEmailError('');
       return;
     }
-    const isValidFormat = /^[^s@]+@[^s@]+.[^s@]+$/.test(val.trim());
+    const isValidFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
     if (isValidFormat && isEmailRegistered(val.trim())) {
-      setEmailError('⚠️ This email is already registered. Please log in instead.');
+      setEmailError('⚠️ This email is already registered. Please switch to Sign In.');
     } else {
       setEmailError('');
     }
@@ -76,12 +85,8 @@ export const RegisterPage: React.FC = () => {
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
-  const handleTrackChange = (track: Track) => {
-    setPreferredTrack(track);
-    setTargetRole(ROLES_BY_TRACK[track][0]);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Step 1: Send OTP to candidate's Email & Phone
+  const handleInitiateOTP = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -93,12 +98,16 @@ export const RegisterPage: React.FC = () => {
       setFormError('Please enter your email address.');
       return;
     }
-    if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email.trim())) {
-      setFormError('Please enter a valid email format (e.g. name@domain.com).');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setFormError('Please enter a valid email address (e.g. john.miller@example.com).');
       return;
     }
     if (isEmailRegistered(email.trim())) {
-      setFormError(`An account with email "${email.trim()}" already exists. Please log in.`);
+      setFormError(`An account with email "${email.trim()}" is already registered. Please switch to Sign In.`);
+      return;
+    }
+    if (!phone.trim()) {
+      setFormError('Please enter your phone number.');
       return;
     }
     if (!password || password.length < 6) {
@@ -109,355 +118,493 @@ export const RegisterPage: React.FC = () => {
       setFormError('Passwords do not match. Please re-enter.');
       return;
     }
-    if (!agreeTerms) {
-      setFormError('Please accept the candidate evaluation terms to proceed.');
+
+    setSubmitting(true);
+    const otp = sendRegistrationOTP(email, phone);
+    setGeneratedOTP(otp);
+    setResendTimer(60);
+    setEnteredOTP('');
+    setOtpError('');
+    setSubmitting(false);
+    setRegStep('otp');
+  };
+
+  // Step 2: Resend OTP
+  const handleResendOTP = () => {
+    if (resendTimer > 0) return;
+    const otp = sendRegistrationOTP(email, phone);
+    setGeneratedOTP(otp);
+    setResendTimer(60);
+    setOtpError('');
+  };
+
+  // Step 3: Verify OTP and finalize Registration
+  const handleVerifyOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError('');
+
+    if (!enteredOTP.trim() || enteredOTP.trim().length !== 6) {
+      setOtpError('Please enter the complete 6-digit verification code.');
       return;
     }
 
     setSubmitting(true);
+    const verification = verifyRegistrationOTP(email, enteredOTP);
 
+    if (!verification.valid) {
+      setSubmitting(false);
+      setOtpError(verification.error || 'Invalid OTP code.');
+      return;
+    }
+
+    // Register candidate once OTP is confirmed
     const result = registerCandidate({
       fullName,
       email,
       phone,
       password,
-      preferredTrack,
-      targetRole,
-      experienceLevel,
-      collegeOrCompany,
     });
 
     setSubmitting(false);
 
     if (!result.success) {
-      setFormError(result.error || 'Registration failed.');
+      setOtpError(result.error || 'Registration failed.');
       return;
     }
 
-    setRegisteredSuccess(true);
+    setRegStep('success');
   };
 
-  const handleProceedToInterview = () => {
-    if (preferredTrack === 'TJI') {
-      navigate('/login/tji');
-    } else {
-      navigate('/login/ntji');
+  // Handle Sign In Submit
+  const handleSignInSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!signInEmail.trim()) {
+      setFormError('Please enter your registered email.');
+      return;
     }
+    if (!signInPassword) {
+      setFormError('Please enter your password.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = loginCandidate(signInEmail, signInPassword);
+    setSubmitting(false);
+
+    if (!result.success || !result.user) {
+      setFormError(result.error || 'Invalid email or password.');
+      return;
+    }
+
+    navigate('/roles');
+  };
+
+  const handleProceedToAssessment = () => {
+    navigate('/roles');
   };
 
   return (
     <div style={styles.pageContainer}>
-      <GlassCanvas3D mode="mixed" />
-      <IOSNavbar />
+      <GlassCanvas3D mode="mixed" intensity={1.2} />
 
-      <div style={styles.contentWrapper}>
-        {/* Success Modal Card */}
-        {registeredSuccess ? (
+      {/* Top Floating Glass Header */}
+      <header style={styles.topHeader}>
+        <div style={styles.logoRow}>
+          <div style={styles.logoIcon}>🎙️</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
+            <span style={styles.proPill}>PRO</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            onClick={() => navigate('/login/admin')}
+            style={styles.adminNavBtn}
+            title="Administrative Talent Console"
+          >
+            🔒 Admin Login
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main style={styles.mainWrapper}>
+        {regStep === 'success' ? (
+          /* SUCCESS SCREEN */
           <div style={styles.successCard}>
             <div style={styles.successIcon}>🎉</div>
-            <h2 style={styles.successTitle}>Registration Successful!</h2>
+            <h2 style={styles.successTitle}>Registration & Verification Complete!</h2>
             <p style={styles.successDesc}>
-              Welcome, <strong style={{ color: '#ffffff' }}>{fullName}</strong>! Your candidate account with{' '}
-              <strong style={{ color: '#93c5fd' }}>{email}</strong> has been registered.
+              Welcome, <strong style={{ color: '#ffffff' }}>{fullName}</strong>! Your email{' '}
+              <strong style={{ color: '#93c5fd' }}>{email}</strong> and phone have been successfully verified.
             </p>
 
-            <div style={styles.successBadgeRow}>
-              <div style={styles.successBadge}>
-                <span>🎯 Track:</span>
-                <strong>{preferredTrack === 'TJI' ? 'Technical (TJI)' : 'Non-Technical (NTJI)'}</strong>
+            <button onClick={handleProceedToAssessment} style={styles.primaryBtn}>
+              Enter Assessment Room ➔
+            </button>
+          </div>
+        ) : regStep === 'otp' ? (
+          /* OTP VERIFICATION MODAL / VIEW */
+          <div style={styles.authCard}>
+            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+              <div style={styles.iconCircle}>📱</div>
+              <h1 style={styles.authTitle}>Verify Email & Phone</h1>
+              <p style={styles.authSubtitle}>
+                We sent a 6-digit confirmation OTP to <strong style={{ color: '#93c5fd' }}>{email}</strong> and{' '}
+                <strong style={{ color: '#93c5fd' }}>{phone}</strong>.
+              </p>
+            </div>
+
+            {/* Simulated Live OTP Notice Box */}
+            <div style={styles.otpBanner}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: '1.1rem' }}>💬</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fef08a' }}>
+                  Verification Code Notice
+                </span>
               </div>
-              <div style={styles.successBadge}>
-                <span>💼 Role:</span>
-                <strong>{targetRole}</strong>
+              <div style={{ fontSize: '0.86rem', color: '#e2e8f0' }}>
+                Your code is: <strong style={styles.otpCodeBadge}>{generatedOTP}</strong>
+                <button
+                  type="button"
+                  onClick={() => setEnteredOTP(generatedOTP)}
+                  style={styles.autoFillBtn}
+                  title="Click to auto-fill code"
+                >
+                  Auto-fill 📋
+                </button>
               </div>
             </div>
 
-            <button onClick={handleProceedToInterview} style={styles.primaryBtn}>
-              Proceed to Interview Room ➔
-            </button>
+            {otpError && <div style={styles.errorBanner}>{otpError}</div>}
+
+            <form onSubmit={handleVerifyOTP}>
+              <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                <label style={{ ...styles.label, marginBottom: '0.75rem' }}>Enter 6-Digit OTP Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  placeholder="• • • • • •"
+                  value={enteredOTP}
+                  onChange={(e) => setEnteredOTP(e.target.value.replace(/\D/g, ''))}
+                  style={styles.otpInput}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  ...styles.primaryBtn,
+                  opacity: submitting ? 0.7 : 1,
+                }}
+              >
+                {submitting ? 'Verifying...' : 'Verify OTP & Complete Registration ➔'}
+              </button>
+
+              <div style={styles.footerNote}>
+                {resendTimer > 0 ? (
+                  <span style={{ color: '#94a3b8' }}>Resend code in {resendTimer}s</span>
+                ) : (
+                  <button type="button" onClick={handleResendOTP} style={styles.switchBtn}>
+                    🔄 Resend OTP Code
+                  </button>
+                )}
+                <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegStep('form');
+                    setOtpError('');
+                  }}
+                  style={styles.switchBtn}
+                >
+                  ✏️ Edit Details
+                </button>
+              </div>
+            </form>
           </div>
         ) : (
-          <div style={styles.formCard}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-              <div style={styles.topBadge}>
-                <span>✨ CANDIDATE ONBOARDING</span>
-              </div>
-              <h1 style={styles.title}>Create Candidate Account</h1>
-              <p style={styles.subtitle}>
-                Register once with your official email to unlock AI voice assessments, live coding sandboxes, and direct HR fast-tracking.
+          /* MAIN FORM CARD (REGISTER OR SIGN IN) */
+          <div style={styles.authCard}>
+            {/* Mode Switcher Tabs */}
+            <div style={styles.tabContainer}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setFormError('');
+                }}
+                style={{
+                  ...styles.tabBtn,
+                  background: mode === 'register' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
+                  color: mode === 'register' ? '#ffffff' : '#94a3b8',
+                  boxShadow: mode === 'register' ? '0 4px 15px rgba(37, 99, 235, 0.4)' : 'none',
+                }}
+              >
+                📝 Register (New Candidate)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setFormError('');
+                }}
+                style={{
+                  ...styles.tabBtn,
+                  background: mode === 'signin' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
+                  color: mode === 'signin' ? '#ffffff' : '#94a3b8',
+                  boxShadow: mode === 'signin' ? '0 4px 15px rgba(37, 99, 235, 0.4)' : 'none',
+                }}
+              >
+                🔑 Already Registered? Sign In
+              </button>
+            </div>
+
+            {/* Title & Subtitle */}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <h1 style={styles.authTitle}>
+                {mode === 'register' ? 'Candidate Registration' : 'Candidate Sign In'}
+              </h1>
+              <p style={styles.authSubtitle}>
+                {mode === 'register'
+                  ? 'Submit your details to receive an OTP confirmation and enter the assessment portal.'
+                  : 'Enter your verified email and password to access your assessment.'}
               </p>
             </div>
 
             {formError && <div style={styles.errorBanner}>{formError}</div>}
 
-            <form onSubmit={handleSubmit}>
-              {/* Row 1: Name & Phone */}
-              <div style={styles.grid2}>
-                <div>
+            {/* ── MODE 1: REGISTRATION (ONLY BASIC DETAILS) ── */}
+            {mode === 'register' ? (
+              <form onSubmit={handleInitiateOTP}>
+                {/* Full Name */}
+                <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.label}>
                     Full Name <span style={{ color: '#f87171' }}>*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Srinivas Pranav Vaidyam"
+                    placeholder="e.g. Johnathan Miller"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     style={styles.input}
                   />
                 </div>
 
-                <div>
-                  <label style={styles.label}>Phone Number</label>
+                {/* Email Address (Unique) */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={styles.label}>
+                      Email Address <span style={{ color: '#f87171' }}>* (Unique per candidate)</span>
+                    </label>
+                    {email && !emailError && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (
+                      <span style={{ fontSize: '0.74rem', color: '#4ade80', fontWeight: 700 }}>
+                        ✓ Email available
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. john.miller@example.com"
+                    value={email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    style={{
+                      ...styles.input,
+                      borderColor: emailError ? '#f87171' : undefined,
+                    }}
+                  />
+                  {emailError && <div style={styles.fieldError}>{emailError}</div>}
+                </div>
+
+                {/* Phone Number */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.label}>
+                    Phone Number <span style={{ color: '#f87171' }}>*</span>
+                  </label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 95910 50952"
+                    required
+                    placeholder="e.g. +1 (555) 234-5678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     style={styles.input}
                   />
                 </div>
-              </div>
 
-              {/* Row 2: Email (With Live Duplicate Warning) */}
-              <div style={{ marginTop: '1.1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={styles.label}>
-                    Email Address <span style={{ color: '#f87171' }}>* (Unique per candidate)</span>
-                  </label>
-                  {email && !emailError && /^[^s@]+@[^s@]+.[^s@]+$/.test(email.trim()) && (
-                    <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 700 }}>
-                      ✓ Email available
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. pranavvaidyam08@gmail.com"
-                  value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
-                  style={{
-                    ...styles.input,
-                    borderColor: emailError ? '#f87171' : undefined,
-                  }}
-                />
-                {emailError && <div style={styles.fieldError}>{emailError}</div>}
-              </div>
-
-              {/* Row 3: Track Selection Tabs */}
-              <div style={{ marginTop: '1.25rem' }}>
-                <label style={styles.label}>
-                  Select Assessment Track <span style={{ color: '#f87171' }}>*</span>
-                </label>
-                <div style={styles.trackTabs}>
-                  <button
-                    type="button"
-                    onClick={() => handleTrackChange('TJI')}
-                    style={{
-                      ...styles.trackTabBtn,
-                      background:
-                        preferredTrack === 'TJI'
-                          ? 'linear-gradient(135deg, rgba(37, 99, 235, 0.4) 0%, rgba(29, 78, 216, 0.5) 100%)'
-                          : 'rgba(255, 255, 255, 0.04)',
-                      borderColor: preferredTrack === 'TJI' ? '#60a5fa' : 'rgba(255, 255, 255, 0.1)',
-                      color: preferredTrack === 'TJI' ? '#ffffff' : '#cbd5e1',
-                    }}
-                  >
-                    <span style={{ fontSize: '1.2rem' }}>⚡</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>Technical Track (TJI)</div>
-                      <div style={{ fontSize: '0.74rem', opacity: 0.8 }}>Coding, DSA, Full Stack, Backend</div>
+                {/* Password & Confirm Password */}
+                <div style={{ ...styles.grid2, marginBottom: '1.25rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={styles.label}>
+                        Password <span style={{ color: '#f87171' }}>*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={styles.showPassBtn}
+                      >
+                        {showPassword ? '👁️ Hide' : '👁️ Show'}
+                      </button>
                     </div>
-                  </button>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Min 6 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={styles.input}
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => handleTrackChange('NTJI')}
-                    style={{
-                      ...styles.trackTabBtn,
-                      background:
-                        preferredTrack === 'NTJI'
-                          ? 'linear-gradient(135deg, rgba(147, 51, 234, 0.4) 0%, rgba(126, 34, 206, 0.5) 100%)'
-                          : 'rgba(255, 255, 255, 0.04)',
-                      borderColor: preferredTrack === 'NTJI' ? '#c084fc' : 'rgba(255, 255, 255, 0.1)',
-                      color: preferredTrack === 'NTJI' ? '#ffffff' : '#cbd5e1',
-                    }}
-                  >
-                    <span style={{ fontSize: '1.2rem' }}>🌐</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>Non-Technical (NTJI)</div>
-                      <div style={{ fontSize: '0.74rem', opacity: 0.8 }}>Sales, HR, Marketing, Operations</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
+                    {password && (
+                      <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={styles.strengthTrack}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: strength.score === 1 ? '33%' : strength.score === 2 ? '66%' : '100%',
+                              background: strength.color,
+                              borderRadius: '4px',
+                              transition: 'all 0.3s ease',
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: strength.color, fontWeight: 700 }}>
+                          {strength.label}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Row 4: Target Role & Experience Level */}
-              <div style={{ ...styles.grid2, marginTop: '1.2rem' }}>
-                <div>
-                  <label style={styles.label}>Target Job Role</label>
-                  <select
-                    value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
-                    style={styles.select}
-                  >
-                    {ROLES_BY_TRACK[preferredTrack].map((r) => (
-                      <option key={r} value={r} style={{ background: '#0f172a', color: '#fff' }}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={styles.label}>Experience Level</label>
-                  <select
-                    value={experienceLevel}
-                    onChange={(e) => setExperienceLevel(e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="Fresher" style={{ background: '#0f172a', color: '#fff' }}>
-                      Fresher / Student (0 Yrs)
-                    </option>
-                    <option value="1-3 Years" style={{ background: '#0f172a', color: '#fff' }}>
-                      Junior (1 - 3 Yrs)
-                    </option>
-                    <option value="3-5 Years" style={{ background: '#0f172a', color: '#fff' }}>
-                      Mid-Level (3 - 5 Yrs)
-                    </option>
-                    <option value="5+ Years" style={{ background: '#0f172a', color: '#fff' }}>
-                      Senior / Lead (5+ Yrs)
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 5: College or Company */}
-              <div style={{ marginTop: '1.1rem' }}>
-                <label style={styles.label}>College / Current Organization (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. IIT Bombay / TechVision Solutions Pvt. Ltd."
-                  value={collegeOrCompany}
-                  onChange={(e) => setCollegeOrCompany(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
-
-              {/* Row 6: Password & Confirm Password */}
-              <div style={{ ...styles.grid2, marginTop: '1.1rem' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
                     <label style={styles.label}>
-                      Password <span style={{ color: '#f87171' }}>*</span>
+                      Confirm Password <span style={{ color: '#f87171' }}>*</span>
                     </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Re-enter password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      style={{
+                        ...styles.input,
+                        borderColor: passwordsMismatch ? '#f87171' : passwordsMatch ? '#4ade80' : undefined,
+                      }}
+                    />
+                    {passwordsMatch && (
+                      <div style={{ fontSize: '0.72rem', color: '#4ade80', marginTop: '0.3rem', fontWeight: 700 }}>
+                        ✓ Passwords match
+                      </div>
+                    )}
+                    {passwordsMismatch && (
+                      <div style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '0.3rem', fontWeight: 700 }}>
+                        ✗ Passwords do not match
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Submit to Send OTP */}
+                <button
+                  type="submit"
+                  disabled={submitting || !!emailError}
+                  style={{
+                    ...styles.primaryBtn,
+                    opacity: submitting || emailError ? 0.6 : 1,
+                    cursor: submitting || emailError ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {submitting ? 'Sending OTP...' : 'Send Confirmation OTP ➔'}
+                </button>
+
+                {/* Switch to Sign In */}
+                <div style={styles.footerNote}>
+                  <span>Already registered?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin');
+                      setFormError('');
+                    }}
+                    style={styles.switchBtn}
+                  >
+                    Click Here to Sign In ➔
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* ── MODE 2: SIGN IN ── */
+              <form onSubmit={handleSignInSubmit}>
+                <div style={{ marginBottom: '1.2rem' }}>
+                  <label style={styles.label}>Registered Email</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. john.miller@example.com"
+                    value={signInEmail}
+                    onChange={(e) => setSignInEmail(e.target.value)}
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={styles.label}>Password</label>
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setShowSignInPassword(!showSignInPassword)}
                       style={styles.showPassBtn}
                     >
-                      {showPassword ? '👁️ Hide' : '👁️ Show'}
+                      {showSignInPassword ? '👁️ Hide' : '👁️ Show'}
                     </button>
                   </div>
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showSignInPassword ? 'text' : 'password'}
                     required
-                    placeholder="Min 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    value={signInPassword}
+                    onChange={(e) => setSignInPassword(e.target.value)}
                     style={styles.input}
                   />
-
-                  {password && (
-                    <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={styles.strengthTrack}>
-                        <div
-                          style={{
-                            height: '100%',
-                            width: strength.score === 1 ? '33%' : strength.score === 2 ? '66%' : '100%',
-                            background: strength.color,
-                            borderRadius: '4px',
-                            transition: 'all 0.3s ease',
-                          }}
-                        />
-                      </div>
-                      <span style={{ fontSize: '0.72rem', color: strength.color, fontWeight: 700 }}>
-                        {strength.label}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
-                <div>
-                  <label style={styles.label}>
-                    Confirm Password <span style={{ color: '#f87171' }}>*</span>
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Re-enter password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{
-                      ...styles.input,
-                      borderColor: passwordsMismatch ? '#f87171' : passwordsMatch ? '#4ade80' : undefined,
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    ...styles.primaryBtn,
+                    opacity: submitting ? 0.7 : 1,
+                  }}
+                >
+                  {submitting ? 'Signing In...' : 'Sign In & Enter Assessment ➔'}
+                </button>
+
+                {/* Switch to Register */}
+                <div style={styles.footerNote}>
+                  <span>Need a new account?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                      setFormError('');
                     }}
-                  />
-                  {passwordsMatch && (
-                    <div style={{ fontSize: '0.72rem', color: '#4ade80', marginTop: '0.35rem', fontWeight: 700 }}>
-                      ✓ Passwords match
-                    </div>
-                  )}
-                  {passwordsMismatch && (
-                    <div style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '0.35rem', fontWeight: 700 }}>
-                      ✗ Passwords do not match
-                    </div>
-                  )}
+                    style={styles.switchBtn}
+                  >
+                    Click Here to Register ➔
+                  </button>
                 </div>
-              </div>
-
-              {/* Consent Checkbox */}
-              <div style={{ marginTop: '1.25rem' }}>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }}
-                  />
-                  <span>
-                    I consent to AI voice evaluation, proctoring telemetry, and recruitment scoring under the assessment charter.
-                  </span>
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={submitting || !!emailError}
-                style={{
-                  ...styles.primaryBtn,
-                  marginTop: '1.5rem',
-                  opacity: submitting || emailError ? 0.6 : 1,
-                  cursor: submitting || emailError ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {submitting ? 'Registering Account...' : 'Create Account & Enter Assessment ➔'}
-              </button>
-
-              {/* Footer Switch to Login */}
-              <div style={styles.footerRow}>
-                <span>Already have a candidate account?</span>
-                <Link to="/login" style={styles.loginLink}>
-                  Sign In Here ➔
-                </Link>
-              </div>
-            </form>
+              </form>
+            )}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };
@@ -467,57 +614,131 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     position: 'relative',
     zIndex: 1,
-    paddingBottom: '4rem',
+    paddingBottom: '3rem',
   },
-  contentWrapper: {
-    maxWidth: '720px',
-    margin: '2rem auto 0',
-    padding: '0 1.25rem',
+  topHeader: {
+    maxWidth: '1100px',
+    margin: '1rem auto 0 auto',
+    padding: '0.75rem 1.5rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
   },
-  formCard: {
-    background: 'rgba(15, 23, 42, 0.75)',
-    backdropFilter: 'blur(28px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '24px',
-    padding: '2.25rem 2.5rem',
-    boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6), 0 0 35px rgba(59, 130, 246, 0.15)',
+  logoRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
   },
-  topBadge: {
-    display: 'inline-flex',
-    padding: '0.35rem 0.9rem',
-    borderRadius: '999px',
-    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
-    border: '1px solid rgba(96, 165, 250, 0.4)',
-    color: '#93c5fd',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    letterSpacing: '0.06em',
-    marginBottom: '0.75rem',
+  logoIcon: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.2rem',
+    boxShadow: '0 0 15px rgba(37, 99, 235, 0.5)',
   },
-  title: {
-    fontSize: '2rem',
+  logoText: {
+    fontSize: '1.2rem',
     fontWeight: 900,
     color: '#ffffff',
-    margin: '0 0 0.5rem 0',
     letterSpacing: '-0.02em',
   },
-  subtitle: {
-    fontSize: '0.92rem',
+  proPill: {
+    fontSize: '0.62rem',
+    fontWeight: 900,
+    padding: '0.15rem 0.5rem',
+    borderRadius: '6px',
+    background: 'rgba(96, 165, 250, 0.2)',
+    color: '#93c5fd',
+    border: '1px solid rgba(96, 165, 250, 0.4)',
+    textTransform: 'uppercase',
+  },
+  adminNavBtn: {
+    background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.25) 100%)',
+    color: '#fef08a',
+    border: '1px solid rgba(251, 191, 36, 0.4)',
+    borderRadius: '12px',
+    padding: '0.45rem 1rem',
+    fontSize: '0.82rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+  },
+  mainWrapper: {
+    maxWidth: '560px',
+    margin: '2.5rem auto 0 auto',
+    padding: '0 1.25rem',
+  },
+  authCard: {
+    background: 'rgba(15, 23, 42, 0.75)',
+    backdropFilter: 'blur(30px)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    borderRadius: '24px',
+    padding: '2.25rem 2.25rem',
+    boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(37, 99, 235, 0.15)',
+  },
+  tabContainer: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.5rem',
+    background: 'rgba(255, 255, 255, 0.05)',
+    padding: '0.35rem',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    marginBottom: '1.75rem',
+  },
+  tabBtn: {
+    padding: '0.75rem 0.5rem',
+    borderRadius: '12px',
+    border: 'none',
+    fontWeight: 800,
+    fontSize: '0.86rem',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+  },
+  iconCircle: {
+    width: '54px',
+    height: '54px',
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.6rem',
+    marginBottom: '0.85rem',
+    boxShadow: '0 10px 25px rgba(37, 99, 235, 0.4)',
+  },
+  authTitle: {
+    fontSize: '1.85rem',
+    fontWeight: 900,
+    color: '#ffffff',
+    margin: '0 0 0.4rem 0',
+    letterSpacing: '-0.02em',
+  },
+  authSubtitle: {
+    fontSize: '0.88rem',
     color: '#cbd5e1',
-    lineHeight: 1.55,
+    lineHeight: 1.5,
     margin: 0,
   },
   grid2: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '1.1rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1rem',
   },
   label: {
     display: 'block',
-    fontSize: '0.84rem',
+    fontSize: '0.82rem',
     fontWeight: 700,
     color: '#e2e8f0',
-    marginBottom: '0.4rem',
+    marginBottom: '0.35rem',
   },
   input: {
     width: '100%',
@@ -529,40 +750,28 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.92rem',
     outline: 'none',
     boxSizing: 'border-box',
-    transition: 'all 0.2s ease',
   },
-  select: {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    borderRadius: '12px',
-    background: 'rgba(15, 23, 42, 0.9)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    color: '#ffffff',
-    fontSize: '0.92rem',
-    outline: 'none',
-    boxSizing: 'border-box',
-    cursor: 'pointer',
-  },
-  trackTabs: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '0.85rem',
-  },
-  trackTabBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
+  otpInput: {
+    width: '240px',
+    margin: '0 auto',
+    display: 'block',
     padding: '0.85rem 1rem',
     borderRadius: '14px',
-    border: '1px solid',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '2px solid #60a5fa',
+    color: '#ffffff',
+    fontSize: '1.5rem',
+    fontWeight: 900,
+    letterSpacing: '0.45em',
+    textAlign: 'center',
+    outline: 'none',
+    boxShadow: '0 0 20px rgba(96, 165, 250, 0.3)',
   },
   showPassBtn: {
     background: 'transparent',
     border: 'none',
     color: '#93c5fd',
-    fontSize: '0.75rem',
+    fontSize: '0.74rem',
     fontWeight: 700,
     cursor: 'pointer',
   },
@@ -573,15 +782,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     overflow: 'hidden',
   },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.65rem',
-    fontSize: '0.82rem',
-    color: '#cbd5e1',
-    lineHeight: 1.45,
-    cursor: 'pointer',
-  },
   primaryBtn: {
     width: '100%',
     padding: '0.95rem 1.5rem',
@@ -590,10 +790,37 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ffffff',
     border: '1px solid rgba(255, 255, 255, 0.3)',
     fontWeight: 800,
-    fontSize: '1rem',
+    fontSize: '0.98rem',
     boxShadow: '0 10px 30px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+  },
+  otpBanner: {
+    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)',
+    border: '1px solid rgba(96, 165, 250, 0.35)',
+    borderRadius: '14px',
+    padding: '0.85rem 1.1rem',
+    marginBottom: '1.5rem',
+  },
+  otpCodeBadge: {
+    background: 'rgba(255, 255, 255, 0.15)',
+    padding: '0.2rem 0.55rem',
+    borderRadius: '8px',
+    color: '#fef08a',
+    fontSize: '1rem',
+    letterSpacing: '0.1em',
+    marginLeft: '0.4rem',
+  },
+  autoFillBtn: {
+    marginLeft: '0.75rem',
+    background: 'rgba(96, 165, 250, 0.25)',
+    border: '1px solid rgba(96, 165, 250, 0.5)',
+    color: '#93c5fd',
+    fontSize: '0.75rem',
+    fontWeight: 800,
+    borderRadius: '6px',
+    padding: '0.2rem 0.5rem',
+    cursor: 'pointer',
   },
   errorBanner: {
     background: 'rgba(239, 68, 68, 0.15)',
@@ -601,35 +828,38 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fca5a5',
     padding: '0.75rem 1rem',
     borderRadius: '10px',
-    fontSize: '0.86rem',
+    fontSize: '0.85rem',
     fontWeight: 700,
     marginBottom: '1.25rem',
   },
   fieldError: {
     color: '#f87171',
-    fontSize: '0.78rem',
+    fontSize: '0.76rem',
     fontWeight: 700,
     marginTop: '0.35rem',
   },
-  footerRow: {
-    marginTop: '1.5rem',
+  footerNote: {
+    marginTop: '1.4rem',
     textAlign: 'center',
-    fontSize: '0.88rem',
+    fontSize: '0.86rem',
     color: '#94a3b8',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     gap: '0.5rem',
   },
-  loginLink: {
+  switchBtn: {
+    background: 'transparent',
+    border: 'none',
     color: '#60a5fa',
-    fontWeight: 700,
-    textDecoration: 'none',
+    fontWeight: 800,
+    fontSize: '0.86rem',
+    cursor: 'pointer',
   },
   successCard: {
     background: 'rgba(15, 23, 42, 0.85)',
-    backdropFilter: 'blur(28px)',
-    border: '1px solid rgba(74, 222, 128, 0.3)',
+    backdropFilter: 'blur(30px)',
+    border: '1px solid rgba(74, 222, 128, 0.35)',
     borderRadius: '24px',
     padding: '3rem 2.5rem',
     textAlign: 'center',
@@ -637,36 +867,19 @@ const styles: Record<string, React.CSSProperties> = {
   },
   successIcon: {
     fontSize: '3.5rem',
-    marginBottom: '1rem',
+    marginBottom: '0.75rem',
   },
   successTitle: {
-    fontSize: '2rem',
+    fontSize: '1.9rem',
     fontWeight: 900,
     color: '#ffffff',
-    margin: '0 0 0.6rem 0',
+    margin: '0 0 0.5rem 0',
   },
   successDesc: {
-    fontSize: '1rem',
+    fontSize: '0.96rem',
     color: '#cbd5e1',
     lineHeight: 1.6,
     margin: '0 0 1.75rem 0',
-  },
-  successBadgeRow: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '1rem',
-    flexWrap: 'wrap',
-    marginBottom: '2rem',
-  },
-  successBadge: {
-    background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    padding: '0.5rem 1rem',
-    borderRadius: '10px',
-    fontSize: '0.84rem',
-    color: '#e2e8f0',
-    display: 'flex',
-    gap: '0.4rem',
   },
 };
 
