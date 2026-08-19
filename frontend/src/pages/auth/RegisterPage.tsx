@@ -38,9 +38,15 @@ export const RegisterPage: React.FC = () => {
   const [signInPassword, setSignInPassword] = useState('');
   const [showSignInPassword, setShowSignInPassword] = useState(false);
 
-  // Unique Code Direct Entry
+  // Unique Code Direct Entry & Track Decision
   const [directCode, setDirectCode] = useState('');
   const [codeError, setCodeError] = useState('');
+  const [verifiedCodeInfo, setVerifiedCodeInfo] = useState<{
+    valid: boolean;
+    candidateName?: string;
+    email?: string;
+    code: string;
+  } | null>(null);
 
   // Feedback states
   const [emailError, setEmailError] = useState('');
@@ -207,7 +213,7 @@ export const RegisterPage: React.FC = () => {
     const { candidate: gdCand } = getCandidateGDInfo(signInEmail);
 
     if (gdCand?.gdStatus === 'approved' && gdCand.uniqueInterviewCode) {
-      // Approved in GD -> go to GD Portal with unlocked interview
+      // Approved in GD -> go to GD Portal with unlocked choice
       navigate('/gd');
     } else if (gdCand) {
       // In GD Cohort -> go to GD portal
@@ -224,23 +230,33 @@ export const RegisterPage: React.FC = () => {
     setCodeError('');
 
     if (!directCode.trim()) {
-      setCodeError('Please enter your Unique Access Code (e.g. VOXIS-TJI-8842 or VOXIS-NTJI-7419).');
+      setCodeError('Please enter your Unique Interview Code (e.g. VOXIS-INT-8842).');
       return;
     }
 
     const check = validateInterviewAccessCode(directCode.trim());
     if (!check.valid) {
-      setCodeError('⚠️ Invalid or unrecognized Unique Code. Please check the code provided in your GD approval email.');
+      setCodeError('⚠️ Invalid or unrecognized Unique Code. Please check the code provided by the admin in your GD approval email.');
       return;
     }
 
     // Store verified code in session
     sessionStorage.setItem('VOXIS_VERIFIED_INTERVIEW_CODE', directCode.trim().toUpperCase());
 
-    if (check.track === 'NTJI') {
-      navigate('/login/ntji');
-    } else {
+    // Show track selection screen for candidate to decide!
+    setVerifiedCodeInfo({
+      valid: true,
+      candidateName: check.candidateName,
+      email: check.email,
+      code: directCode.trim().toUpperCase(),
+    });
+  };
+
+  const handleLaunchTrack = (track: 'TJI' | 'NTJI') => {
+    if (track === 'TJI') {
       navigate('/login/tji');
+    } else {
+      navigate('/login/ntji');
     }
   };
 
@@ -363,6 +379,7 @@ export const RegisterPage: React.FC = () => {
                   setMode('register');
                   setFormError('');
                   setCodeError('');
+                  setVerifiedCodeInfo(null);
                 }}
                 style={{
                   ...styles.tabBtn,
@@ -380,6 +397,7 @@ export const RegisterPage: React.FC = () => {
                   setMode('signin');
                   setFormError('');
                   setCodeError('');
+                  setVerifiedCodeInfo(null);
                 }}
                 style={{
                   ...styles.tabBtn,
@@ -397,6 +415,7 @@ export const RegisterPage: React.FC = () => {
                   setMode('code_entry');
                   setFormError('');
                   setCodeError('');
+                  setVerifiedCodeInfo(null);
                 }}
                 style={{
                   ...styles.tabBtn,
@@ -412,26 +431,79 @@ export const RegisterPage: React.FC = () => {
             {/* Title & Subtitle */}
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h1 style={styles.authTitle}>
-                {mode === 'register'
+                {verifiedCodeInfo
+                  ? 'Select Interview Track'
+                  : mode === 'register'
                   ? 'Candidate Registration'
                   : mode === 'signin'
                   ? 'Candidate Sign In'
-                  : 'GD-Approved Interview Entry'}
+                  : 'GD Unique Code Entry'}
               </h1>
               <p style={styles.authSubtitle}>
-                {mode === 'register'
+                {verifiedCodeInfo
+                  ? 'Your unique code is valid for both tracks. Choose the interview track you want to undertake:'
+                  : mode === 'register'
                   ? 'Submit your details to receive an email confirmation OTP and create your account.'
                   : mode === 'signin'
                   ? 'Enter your registered email and password to access your assessment.'
-                  : 'Enter the unique access code given by the administrator after clearing Aptitude & GD.'}
+                  : 'Enter the admin-provided unique code to choose and launch either TJI or NTJI.'}
               </p>
             </div>
 
             {formError && <div style={styles.errorBanner}>{formError}</div>}
             {codeError && <div style={styles.errorBanner}>{codeError}</div>}
 
-            {/* ── MODE 1: REGISTRATION ── */}
-            {mode === 'register' && (
+            {/* ── TRACK DECISION VIEW (AFTER VERIFIED CODE) ── */}
+            {verifiedCodeInfo ? (
+              <div>
+                <div style={styles.verifiedBadgeBox}>
+                  <span style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase' }}>
+                    Verified Interview Code
+                  </span>
+                  <div style={styles.verifiedCodeText}>{verifiedCodeInfo.code}</div>
+                  <span style={{ fontSize: '0.82rem', color: '#4ade80', fontWeight: 800 }}>
+                    ✓ Valid for Technical (TJI) & Non-Technical (NTJI)
+                  </span>
+                </div>
+
+                <div style={styles.trackChoiceGrid}>
+                  {/* Option 1: TJI */}
+                  <div style={styles.trackCard} onClick={() => handleLaunchTrack('TJI')}>
+                    <div style={styles.trackIcon}>💻</div>
+                    <h3 style={styles.trackTitle}>Technical Job Interview (TJI)</h3>
+                    <p style={styles.trackDesc}>
+                      Frontend, Backend, Full Stack, Software Engineering & System Architecture.
+                    </p>
+                    <button style={styles.tjiSelectBtn}>
+                      Select Technical Track ➔
+                    </button>
+                  </div>
+
+                  {/* Option 2: NTJI */}
+                  <div style={styles.trackCard} onClick={() => handleLaunchTrack('NTJI')}>
+                    <div style={{ ...styles.trackIcon, background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)' }}>🎙️</div>
+                    <h3 style={styles.trackTitle}>Non-Technical Interview (NTJI)</h3>
+                    <p style={styles.trackDesc}>
+                      Product Strategy, Business Analysis, Account Management & Leadership.
+                    </p>
+                    <button style={styles.ntjiSelectBtn}>
+                      Select Non-Technical Track ➔
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setVerifiedCodeInfo(null)}
+                    style={styles.switchBtn}
+                  >
+                    ✏️ Enter a different code
+                  </button>
+                </div>
+              </div>
+            ) : mode === 'register' ? (
+              /* ── MODE 1: REGISTRATION ── */
               <form onSubmit={handleInitiateOTP}>
                 {/* Full Name */}
                 <div style={{ marginBottom: '1rem' }}>
@@ -588,10 +660,8 @@ export const RegisterPage: React.FC = () => {
                   </button>
                 </div>
               </form>
-            )}
-
-            {/* ── MODE 2: SIGN IN ── */}
-            {mode === 'signin' && (
+            ) : mode === 'signin' ? (
+              /* ── MODE 2: SIGN IN ── */
               <form onSubmit={handleSignInSubmit}>
                 <div style={{ marginBottom: '1.2rem' }}>
                   <label style={styles.label}>Registered Email</label>
@@ -650,7 +720,7 @@ export const RegisterPage: React.FC = () => {
                     }}
                     style={styles.enterCodeLinkBtn}
                   >
-                    Click Here to Enter with Unique Code ➔
+                    Click Here to Choose Track with Unique Code ➔
                   </button>
                 </div>
 
@@ -668,10 +738,8 @@ export const RegisterPage: React.FC = () => {
                   </button>
                 </div>
               </form>
-            )}
-
-            {/* ── MODE 3: DIRECT UNIQUE CODE ENTRY (GD APPROVED) ── */}
-            {mode === 'code_entry' && (
+            ) : (
+              /* ── MODE 3: DIRECT UNIQUE CODE ENTRY (GD APPROVED) ── */
               <form onSubmit={handleDirectCodeSubmit}>
                 <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                   <label style={{ ...styles.label, marginBottom: '0.5rem', fontSize: '0.88rem' }}>
@@ -680,13 +748,13 @@ export const RegisterPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. VOXIS-TJI-8842 or VOXIS-NTJI-7419"
+                    placeholder="e.g. VOXIS-INT-8842 or VOXIS-TJI-8842"
                     value={directCode}
                     onChange={(e) => setDirectCode(e.target.value.toUpperCase())}
                     style={styles.codeInput}
                   />
                   <p style={{ margin: '0.6rem 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                    This unique code is dispatched to your registered email upon being approved in the Group Discussion round.
+                    Your unique code unlocks both TJI and NTJI tracks. Enter code to choose your preferred interview track.
                   </p>
                 </div>
 
@@ -698,7 +766,7 @@ export const RegisterPage: React.FC = () => {
                     boxShadow: '0 10px 30px rgba(245, 158, 11, 0.4)',
                   }}
                 >
-                  Verify Code & Launch Interview Room ➔
+                  Verify Code & Choose Interview Track ➔
                 </button>
 
                 <div style={styles.footerNote}>
@@ -786,7 +854,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   mainWrapper: {
-    maxWidth: '580px',
+    maxWidth: '620px',
     margin: '2.5rem auto 0 auto',
     padding: '0 1.25rem',
   },
@@ -985,6 +1053,84 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#60a5fa',
     fontWeight: 800,
     fontSize: '0.86rem',
+    cursor: 'pointer',
+  },
+  verifiedBadgeBox: {
+    background: 'rgba(0, 0, 0, 0.35)',
+    border: '1px solid rgba(245, 158, 11, 0.4)',
+    borderRadius: '16px',
+    padding: '1.2rem',
+    textAlign: 'center',
+    marginBottom: '1.5rem',
+  },
+  verifiedCodeText: {
+    fontSize: '1.85rem',
+    fontWeight: 900,
+    color: '#fef08a',
+    letterSpacing: '0.08em',
+    fontFamily: 'monospace',
+    margin: '0.4rem 0',
+  },
+  trackChoiceGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+  },
+  trackCard: {
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '18px',
+    padding: '1.5rem 1.25rem',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  trackIcon: {
+    width: '46px',
+    height: '46px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.4rem',
+    margin: '0 auto 0.75rem auto',
+    boxShadow: '0 8px 20px rgba(37, 99, 235, 0.4)',
+  },
+  trackTitle: {
+    fontSize: '1.05rem',
+    fontWeight: 900,
+    color: '#ffffff',
+    margin: '0 0 0.4rem 0',
+  },
+  trackDesc: {
+    fontSize: '0.78rem',
+    color: '#cbd5e1',
+    lineHeight: 1.4,
+    margin: '0 0 1.25rem 0',
+    flex: 1,
+  },
+  tjiSelectBtn: {
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+    color: '#ffffff',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    padding: '0.65rem 0.85rem',
+    borderRadius: '12px',
+    fontWeight: 800,
+    fontSize: '0.84rem',
+    cursor: 'pointer',
+  },
+  ntjiSelectBtn: {
+    background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)',
+    color: '#ffffff',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    padding: '0.65rem 0.85rem',
+    borderRadius: '12px',
+    fontWeight: 800,
+    fontSize: '0.84rem',
     cursor: 'pointer',
   },
   successCard: {

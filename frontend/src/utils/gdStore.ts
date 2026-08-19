@@ -314,9 +314,8 @@ export async function evaluateGDCandidate(
 
   if (decision === 'approved') {
     // Generate unique code for TJI or NTJI
-    const prefix = candidate.preferredTrack === 'NTJI' ? 'VOXIS-NTJI' : 'VOXIS-TJI';
     const randCode = Math.floor(1000 + Math.random() * 9000);
-    candidate.uniqueInterviewCode = `${prefix}-${randCode}`;
+    candidate.uniqueInterviewCode = `VOXIS-INT-${randCode}`;
 
     // Dispatch Acceptance Email with Unique Access Code
     try {
@@ -371,14 +370,16 @@ export async function evaluateGDCandidate(
   };
 }
 
-// ── 5. Validate Interview Access Code ───────────────────────────────────────
+// ── 5. Validate Interview Access Code (Universal for both TJI & NTJI) ────────
 export function validateInterviewAccessCode(code: string): {
   valid: boolean;
-  track?: 'TJI' | 'NTJI';
   candidateName?: string;
   email?: string;
+  preferredTrack?: 'TJI' | 'NTJI';
 } {
   const trimmed = code.trim().toUpperCase();
+  if (!trimmed) return { valid: false };
+
   const cohorts = getGDCohorts();
 
   for (const c of cohorts) {
@@ -386,20 +387,30 @@ export function validateInterviewAccessCode(code: string): {
       if (cand.uniqueInterviewCode && cand.uniqueInterviewCode.toUpperCase() === trimmed) {
         return {
           valid: true,
-          track: cand.preferredTrack,
           candidateName: cand.fullName,
           email: cand.email,
+          preferredTrack: cand.preferredTrack,
         };
       }
     }
   }
 
-  // Fallback demo codes
-  if (trimmed.startsWith('VOXIS-TJI-') || trimmed.startsWith('TJI-')) {
-    return { valid: true, track: 'TJI', candidateName: 'Candidate', email: 'candidate@example.com' };
-  }
-  if (trimmed.startsWith('VOXIS-NTJI-') || trimmed.startsWith('NTJI-')) {
-    return { valid: true, track: 'NTJI', candidateName: 'Candidate', email: 'candidate@example.com' };
+  // Accept any VOXIS-INT, VOXIS-TJI, VOXIS-NTJI, INT-, TJI-, NTJI- codes
+  if (
+    trimmed.startsWith('VOXIS-INT-') ||
+    trimmed.startsWith('VOXIS-TJI-') ||
+    trimmed.startsWith('VOXIS-NTJI-') ||
+    trimmed.startsWith('INT-') ||
+    trimmed.startsWith('TJI-') ||
+    trimmed.startsWith('NTJI-') ||
+    trimmed.startsWith('VOXIS-')
+  ) {
+    return {
+      valid: true,
+      candidateName: 'Candidate',
+      email: 'candidate@example.com',
+      preferredTrack: 'TJI',
+    };
   }
 
   return { valid: false };

@@ -16,6 +16,13 @@ export const CandidateLoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [verifiedCodeInfo, setVerifiedCodeInfo] = useState<{
+    valid: boolean;
+    candidateName?: string;
+    email?: string;
+    code: string;
+  } | null>(null);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -66,10 +73,20 @@ export const CandidateLoginPage: React.FC = () => {
 
     sessionStorage.setItem('VOXIS_VERIFIED_INTERVIEW_CODE', uniqueCode.trim().toUpperCase());
 
-    if (check.track === 'NTJI') {
-      navigate('/login/ntji');
-    } else {
+    // Show track selection choice screen!
+    setVerifiedCodeInfo({
+      valid: true,
+      candidateName: check.candidateName,
+      email: check.email,
+      code: uniqueCode.trim().toUpperCase(),
+    });
+  };
+
+  const handleLaunchTrack = (track: 'TJI' | 'NTJI') => {
+    if (track === 'TJI') {
       navigate('/login/tji');
+    } else {
+      navigate('/login/ntji');
     }
   };
 
@@ -88,108 +105,161 @@ export const CandidateLoginPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Mode Tabs */}
-          <div style={styles.tabGrid}>
-            <button
-              onClick={() => { setMode('password'); setError(''); }}
-              style={{
-                ...styles.tabBtn,
-                background: mode === 'password' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
-                color: mode === 'password' ? '#ffffff' : '#94a3b8',
-              }}
-            >
-              🔑 Email & Password
-            </button>
-            <button
-              onClick={() => { setMode('unique_code'); setError(''); }}
-              style={{
-                ...styles.tabBtn,
-                background: mode === 'unique_code' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
-                color: mode === 'unique_code' ? '#ffffff' : '#94a3b8',
-              }}
-            >
-              🎟️ GD Unique Code
-            </button>
-          </div>
-
-          {error && <div style={styles.errorBanner}>{error}</div>}
-
-          {mode === 'password' ? (
-            <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={styles.label}>Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. alex.smith@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={styles.input}
-                />
+          {verifiedCodeInfo ? (
+            /* Track Decision View */
+            <div>
+              <div style={styles.verifiedBadgeBox}>
+                <span style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase' }}>
+                  Verified Interview Code
+                </span>
+                <div style={styles.verifiedCodeText}>{verifiedCodeInfo.code}</div>
+                <span style={{ fontSize: '0.82rem', color: '#4ade80', fontWeight: 800 }}>
+                  ✓ Universal Access: Choose Your Preferred Track
+                </span>
               </div>
 
-              <div style={{ marginBottom: '1.75rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={styles.label}>Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={styles.showPassBtn}
-                  >
-                    {showPassword ? '👁️ Hide' : '👁️ Show'}
+              <div style={styles.trackChoiceGrid}>
+                {/* Option 1: TJI */}
+                <div style={styles.trackCard} onClick={() => handleLaunchTrack('TJI')}>
+                  <div style={styles.trackIcon}>💻</div>
+                  <h3 style={styles.trackTitle}>Technical (TJI)</h3>
+                  <p style={styles.trackDesc}>
+                    Frontend, Backend, Full Stack & Engineering.
+                  </p>
+                  <button style={styles.tjiSelectBtn}>
+                    Launch TJI ➔
                   </button>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={styles.input}
-                />
+
+                {/* Option 2: NTJI */}
+                <div style={styles.trackCard} onClick={() => handleLaunchTrack('NTJI')}>
+                  <div style={{ ...styles.trackIcon, background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)' }}>🎙️</div>
+                  <h3 style={styles.trackTitle}>Non-Technical (NTJI)</h3>
+                  <p style={styles.trackDesc}>
+                    Product, Business, Operations & Strategy.
+                  </p>
+                  <button style={styles.ntjiSelectBtn}>
+                    Launch NTJI ➔
+                  </button>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  ...styles.submitBtn,
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
-                {loading ? 'Authenticating...' : 'Sign In ➔'}
-              </button>
-            </form>
+              <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setVerifiedCodeInfo(null)}
+                  style={styles.switchBtn}
+                >
+                  ✏️ Enter a different code
+                </button>
+              </div>
+            </div>
           ) : (
-            <form onSubmit={handleCodeEntry}>
-              <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                <label style={{ ...styles.label, marginBottom: '0.5rem' }}>
-                  Admin-Issued Unique Interview Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. VOXIS-TJI-8842 or VOXIS-NTJI-7419"
-                  value={uniqueCode}
-                  onChange={(e) => setUniqueCode(e.target.value.toUpperCase())}
-                  style={styles.codeInput}
-                />
-                <p style={{ margin: '0.6rem 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                  Enter the code given by the admin after clearing Aptitude & GD.
-                </p>
+            <>
+              {/* Mode Tabs */}
+              <div style={styles.tabGrid}>
+                <button
+                  onClick={() => { setMode('password'); setError(''); }}
+                  style={{
+                    ...styles.tabBtn,
+                    background: mode === 'password' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
+                    color: mode === 'password' ? '#ffffff' : '#94a3b8',
+                  }}
+                >
+                  🔑 Email & Password
+                </button>
+                <button
+                  onClick={() => { setMode('unique_code'); setError(''); }}
+                  style={{
+                    ...styles.tabBtn,
+                    background: mode === 'unique_code' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
+                    color: mode === 'unique_code' ? '#ffffff' : '#94a3b8',
+                  }}
+                >
+                  🎟️ GD Unique Code
+                </button>
               </div>
 
-              <button
-                type="submit"
-                style={{
-                  ...styles.submitBtn,
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  boxShadow: '0 10px 30px rgba(245, 158, 11, 0.4)',
-                }}
-              >
-                Verify Code & Launch Interview ➔
-              </button>
-            </form>
+              {error && <div style={styles.errorBanner}>{error}</div>}
+
+              {mode === 'password' ? (
+                <form onSubmit={handleLogin}>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={styles.label}>Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. alex.smith@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={styles.label}>Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={styles.showPassBtn}
+                      >
+                        {showPassword ? '👁️ Hide' : '👁️ Show'}
+                      </button>
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Enter password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      ...styles.submitBtn,
+                      opacity: loading ? 0.7 : 1,
+                    }}
+                  >
+                    {loading ? 'Authenticating...' : 'Sign In ➔'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleCodeEntry}>
+                  <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                    <label style={{ ...styles.label, marginBottom: '0.5rem' }}>
+                      Admin-Issued Unique Interview Code
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. VOXIS-INT-8842 or VOXIS-TJI-8842"
+                      value={uniqueCode}
+                      onChange={(e) => setUniqueCode(e.target.value.toUpperCase())}
+                      style={styles.codeInput}
+                    />
+                    <p style={{ margin: '0.6rem 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                      Universal code for both TJI and NTJI. Enter code to choose your interview track.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    style={{
+                      ...styles.submitBtn,
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      boxShadow: '0 10px 30px rgba(245, 158, 11, 0.4)',
+                    }}
+                  >
+                    Verify Code & Choose Track ➔
+                  </button>
+                </form>
+              )}
+            </>
           )}
 
           <div style={styles.footer}>
@@ -211,7 +281,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1,
   },
   contentWrapper: {
-    maxWidth: '480px',
+    maxWidth: '540px',
     margin: '3.5rem auto',
     padding: '0 1rem',
   },
@@ -326,6 +396,91 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     marginBottom: '1.25rem',
     textAlign: 'center',
+  },
+  verifiedBadgeBox: {
+    background: 'rgba(0, 0, 0, 0.35)',
+    border: '1px solid rgba(245, 158, 11, 0.4)',
+    borderRadius: '16px',
+    padding: '1.2rem',
+    textAlign: 'center',
+    marginBottom: '1.5rem',
+  },
+  verifiedCodeText: {
+    fontSize: '1.85rem',
+    fontWeight: 900,
+    color: '#fef08a',
+    letterSpacing: '0.08em',
+    fontFamily: 'monospace',
+    margin: '0.4rem 0',
+  },
+  trackChoiceGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+  },
+  trackCard: {
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '18px',
+    padding: '1.25rem 1rem',
+    textAlign: 'center',
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  trackIcon: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.3rem',
+    margin: '0 auto 0.6rem auto',
+    boxShadow: '0 8px 20px rgba(37, 99, 235, 0.4)',
+  },
+  trackTitle: {
+    fontSize: '0.96rem',
+    fontWeight: 900,
+    color: '#ffffff',
+    margin: '0 0 0.35rem 0',
+  },
+  trackDesc: {
+    fontSize: '0.74rem',
+    color: '#cbd5e1',
+    lineHeight: 1.4,
+    margin: '0 0 1rem 0',
+    flex: 1,
+  },
+  tjiSelectBtn: {
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+    color: '#ffffff',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    padding: '0.55rem 0.75rem',
+    borderRadius: '10px',
+    fontWeight: 800,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  },
+  ntjiSelectBtn: {
+    background: 'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)',
+    color: '#ffffff',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    padding: '0.55rem 0.75rem',
+    borderRadius: '10px',
+    fontWeight: 800,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  },
+  switchBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#60a5fa',
+    fontWeight: 800,
+    fontSize: '0.84rem',
+    cursor: 'pointer',
   },
   footer: {
     marginTop: '2rem',
