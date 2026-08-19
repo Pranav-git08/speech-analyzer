@@ -232,6 +232,50 @@ const LandingPage: React.FC = () => {
               HD 48kHz
             </span>
           </div>
+
+          {/* Registration & Login Quick CTA */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
+            <button
+              onClick={() => navigate('/register')}
+              className="luxury-sheen-btn"
+              style={{
+                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                padding: '0.85rem 1.75rem',
+                borderRadius: '16px',
+                fontSize: '0.98rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <span>📝</span> Register as New Candidate ➔
+            </button>
+
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '0.85rem 1.6rem',
+                borderRadius: '16px',
+                fontSize: '0.98rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                backdropFilter: 'blur(16px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <span>🔑</span> Candidate Sign In
+            </button>
+          </div>
         </div>
 
         {/* ── 3. The 3 Core Masterclass Interview Tracks (Interactive 3D Magnetic Tilt Cards) ── */}

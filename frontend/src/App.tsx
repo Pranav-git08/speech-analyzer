@@ -11,6 +11,8 @@ import { TJILoginPage } from './pages/auth/TJILoginPage';
 import { NTJILoginPage } from './pages/auth/NTJILoginPage';
 import { HRLoginPage } from './pages/auth/HRLoginPage';
 import { GDLoginPage } from './pages/auth/GDLoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { CandidateLoginPage } from './pages/auth/CandidateLoginPage';
 import MicTestPage from './pages/MicTestPage';
 import GestureSystem from './components/GestureSystem';
 
@@ -22,6 +24,10 @@ const App: React.FC = () => {
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/signup" element={<RegisterPage />} />
+        <Route path="/login" element={<CandidateLoginPage />} />
+        <Route path="/login/candidate" element={<CandidateLoginPage />} />
         <Route path="/test-mic" element={<MicTestPage />} />
         <Route path="/mic-test" element={<MicTestPage />} />
         <Route path="/login/tji" element={<TJILoginPage />} />

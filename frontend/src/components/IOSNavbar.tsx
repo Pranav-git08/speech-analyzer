@@ -145,7 +145,32 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
             📶 System Check
           </button>
 
-          {/* 5. Admin Console Login (Positioned at the very last) */}
+          {/* 5. Candidate Register & Login Buttons */}
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              ...navBtnStyle(isCurrent('/register') || isCurrent('/signup'), '59, 130, 246'),
+              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.4) 0%, rgba(124, 58, 237, 0.4) 100%)',
+              color: '#ffffff',
+              border: '1.5px solid rgba(96, 165, 250, 0.6)',
+              boxShadow: '0 0 15px rgba(59, 130, 246, 0.35)',
+            }}
+            className="luxury-sheen-btn glass-clickable"
+            title="Candidate Account Registration"
+          >
+            📝 Register
+          </button>
+
+          <button
+            onClick={() => navigate('/login')}
+            style={navBtnStyle(isCurrent('/login'), '147, 51, 234')}
+            className="glass-clickable"
+            title="Candidate Sign In"
+          >
+            🔑 Sign In
+          </button>
+
+          {/* 6. Admin Console Login (Positioned at the very last) */}
           <button
             onClick={() => navigate('/login/admin')}
             style={{
@@ -156,7 +181,7 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
               color: '#fef08a',
               border: '1.5px solid rgba(251, 191, 36, 0.55)',
               boxShadow: '0 0 20px rgba(251, 191, 36, 0.3), inset 0 1px 1px rgba(255,255,255,0.4)',
-              marginLeft: '0.4rem',
+              marginLeft: '0.25rem',
             }}
             className="luxury-sheen-btn glass-clickable"
             title="Administrative Talent Console"
