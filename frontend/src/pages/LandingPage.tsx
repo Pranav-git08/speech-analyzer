@@ -13,7 +13,7 @@ export const LandingPage: React.FC = () => {
     '30-Minute Anti-Cheat Aptitude Screening (7/15 Cutoff)',
     'AI Automated 5-Member Group Discussion (GD) Cohorts',
     'Universal VOXIS-INT Access for TJI & NTJI Tracks',
-    'Enterprise-Grade Proctoring & FAANG Assessment Standards',
+    'Executive HR Intelligence & Offer Letter Dispatch',
   ];
   const [headlineIndex, setHeadlineIndex] = useState(0);
 
@@ -32,130 +32,99 @@ export const LandingPage: React.FC = () => {
       {/* Global iOS Navbar */}
       <IOSNavbar />
 
-      {/* Hero Section */}
-      <section style={styles.heroSection}>
-        {/* Animated Pill Badge */}
-        <div style={styles.badgeContainer}>
-          <span style={styles.badgePulse} />
-          <span style={styles.badgeText}>✨ NEXT-GEN AI MULTI-MODAL RECRUITMENT PLATFORM</span>
-        </div>
+      {/* Main Unified Viewport: Hero + Single CTA + Interactive Roadmap Together */}
+      <main style={styles.mainContent}>
+        {/* Compact Hero Header */}
+        <section style={styles.heroHeader}>
+          <div style={styles.badgeContainer}>
+            <span style={styles.badgePulse} />
+            <span style={styles.badgeText}>✨ NEXT-GEN AI MULTI-MODAL RECRUITMENT PLATFORM</span>
+          </div>
 
-        {/* BOLD ANIMATED PROJECT TITLE */}
-        <h1 style={styles.mainTitle}>
-          <span style={styles.titleGradient}>VOXIS</span>
-          <span style={styles.titleAi}>.AI</span>
-        </h1>
+          {/* BOLD ANIMATED PROJECT TITLE */}
+          <h1 style={styles.mainTitle}>
+            <span style={styles.titleGradient}>VOXIS</span>
+            <span style={styles.titleAi}>.AI</span>
+          </h1>
 
-        {/* Dynamic Animated Subtitle Banner */}
-        <div style={styles.headlineTickerBox}>
-          <span style={styles.tickerIcon}>⚡</span>
-          <span key={headlineIndex} style={styles.animatedHeadline}>
-            {headlines[headlineIndex]}
-          </span>
-        </div>
+          {/* Dynamic Headline Ticker */}
+          <div style={styles.headlineTickerBox}>
+            <span style={styles.tickerIcon}>⚡</span>
+            <span key={headlineIndex} style={styles.animatedHeadline}>
+              {headlines[headlineIndex]}
+            </span>
+          </div>
 
-        {/* Descriptive Tagline */}
-        <p style={styles.heroDescription}>
-          The world's most advanced autonomous talent evaluation engine. Seamlessly blending 
-          <strong> AI-proctored aptitude assessments</strong>, <strong>5-member GD cohort clustering</strong>, 
-          and <strong>real-time acoustic vocal speech analysis</strong> for global MNCs and elite colleges.
-        </p>
+          {/* SINGLE HERO ENTRY POINT CTA BUTTON */}
+          <div style={styles.singleCtaWrapper}>
+            <button
+              onClick={() => navigate('/register')}
+              style={styles.mainHeroCta}
+              title="Launch candidate portal - Register, Sign In, or Enter Unique GD Code"
+            >
+              <div style={styles.ctaIconBox}>
+                <span style={{ fontSize: '1.75rem' }}>🚀</span>
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={styles.heroCtaTitle}>Begin Candidate Journey</div>
+                <div style={styles.heroCtaSub}>
+                  Register with Email OTP &amp; Start Aptitude Round / Sign In with GD Code
+                </div>
+              </div>
+              <div style={styles.ctaArrowCircle}>
+                ➔
+              </div>
+            </button>
+          </div>
+        </section>
 
-        {/* SINGLE HERO ENTRY POINT CTA */}
-        <div style={styles.singleCtaWrapper}>
-          <button
-            onClick={() => navigate('/register')}
-            style={styles.mainHeroCta}
-            title="Launch candidate portal - Register, Sign In, or Enter Unique GD Code"
-          >
-            <div style={styles.ctaIconBox}>
-              <span style={{ fontSize: '2rem' }}>🚀</span>
-            </div>
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <div style={styles.heroCtaTitle}>Begin Candidate Journey</div>
-              <div style={styles.heroCtaSub}>
-                Register with Email OTP &amp; Start Aptitude Round / Sign In with GD Code
+        {/* 6-Stage Recruitment Pipeline Interactive Visualizer with Canvas Beam */}
+        <section style={styles.pipelineSection}>
+          <div style={styles.sectionHeader}>
+            <span style={styles.sectionPill}>INTERACTIVE ROADMAP</span>
+            <h2 style={styles.sectionTitle}>6-Stage Autonomous Assessment Pathway</h2>
+          </div>
+
+          {/* Animated Canvas Holographic Pathway Component */}
+          <InteractiveRoadmapCanvas />
+        </section>
+
+        {/* Global MNC Standards & Market Fit Section */}
+        <section style={styles.marketSection}>
+          <div style={styles.marketCard}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+              <span style={{ fontSize: '1.75rem' }}>🏢</span>
+              <div>
+                <h3 style={styles.marketTitle}>Engineered for Global MNC &amp; University Standards</h3>
+                <p style={styles.marketSub}>FAANG/MAANG, Fortune 500 Consulting, and Premier Engineering Colleges</p>
               </div>
             </div>
-            <div style={styles.ctaArrowCircle}>
-              ➔
-            </div>
-          </button>
-        </div>
 
-        {/* Quick Platform Metrics Banner */}
-        <div style={styles.metricsBar}>
-          <div style={styles.metricItem}>
-            <div style={styles.metricNumber}>15 Qs</div>
-            <div style={styles.metricLabel}>Anti-Cheat Aptitude Round</div>
-          </div>
-          <div style={styles.metricDivider} />
-          <div style={styles.metricItem}>
-            <div style={styles.metricNumber}>5 Members</div>
-            <div style={styles.metricLabel}>Automated GD Cohorts</div>
-          </div>
-          <div style={styles.metricDivider} />
-          <div style={styles.metricItem}>
-            <div style={styles.metricNumber}>VOXIS-INT</div>
-            <div style={styles.metricLabel}>Universal Track Tokens</div>
-          </div>
-          <div style={styles.metricDivider} />
-          <div style={styles.metricItem}>
-            <div style={styles.metricNumber}>&lt; 50ms</div>
-            <div style={styles.metricLabel}>Real-Time Acoustic Telemetry</div>
-          </div>
-        </div>
-      </section>
+            <div style={styles.marketGrid}>
+              <div style={styles.marketPillar}>
+                <div style={styles.pillarTitle}>💻 Big Tech (FAANG / MAANG)</div>
+                <p style={styles.pillarText}>
+                  Rigorous testing aligned with Amazon Leadership Principles, Google analytical problem decomposition, and Meta high-velocity coding.
+                </p>
+              </div>
 
-      {/* 5-Stage Recruitment Pipeline Interactive Visualizer with Canvas Beam */}
-      <section style={styles.pipelineSection}>
-        <div style={styles.sectionHeader}>
-          <span style={styles.sectionPill}>INTERACTIVE ROADMAP</span>
-          <h2 style={styles.sectionTitle}>5-Stage Autonomous Assessment Pathway</h2>
-          <p style={styles.sectionDesc}>
-            Explore the holographic candidate journey. Select any stage station below or let the energy beam guide you through the process:
-          </p>
-        </div>
+              <div style={styles.marketPillar}>
+                <div style={styles.pillarTitle}>📊 Global Consulting &amp; Big 4</div>
+                <p style={styles.pillarText}>
+                  Assessing structured communication via STAR &amp; PESTEL frameworks, client readiness, and executive poise during GD rounds.
+                </p>
+              </div>
 
-        {/* Animated Canvas Holographic Pathway Component */}
-        <InteractiveRoadmapCanvas />
-      </section>
-
-      {/* Global MNC Standards & Market Fit Section */}
-      <section style={styles.marketSection}>
-        <div style={styles.marketCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '2rem' }}>🏢</span>
-            <div>
-              <h3 style={styles.marketTitle}>Engineered for Global MNC &amp; University Standards</h3>
-              <p style={styles.marketSub}>FAANG/MAANG, Fortune 500 Consulting, and Premier Engineering Colleges</p>
+              <div style={styles.marketPillar}>
+                <div style={styles.pillarTitle}>🎓 Premier College Placements</div>
+                <p style={styles.pillarText}>
+                  Equipping fresh graduates and students from Tier-1 and Tier-2/3 institutions to prove competence through verified talent data.
+                </p>
+              </div>
             </div>
           </div>
-
-          <div style={styles.marketGrid}>
-            <div style={styles.marketPillar}>
-              <div style={styles.pillarTitle}>💻 Big Tech (FAANG / MAANG)</div>
-              <p style={styles.pillarText}>
-                Rigorous testing aligned with Amazon Leadership Principles, Google analytical problem decomposition, and Meta high-velocity coding.
-              </p>
-            </div>
-
-            <div style={styles.marketPillar}>
-              <div style={styles.pillarTitle}>📊 Global Consulting &amp; Big 4</div>
-              <p style={styles.pillarText}>
-                Assessing structured communication via STAR &amp; PESTEL frameworks, client readiness, and executive poise during GD rounds.
-              </p>
-            </div>
-
-            <div style={styles.marketPillar}>
-              <div style={styles.pillarTitle}>🎓 Premier College Placements</div>
-              <p style={styles.pillarText}>
-                Equipping fresh graduates and students from Tier-1 and Tier-2/3 institutions to prove competence through verified talent data.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
   );
 };
@@ -165,47 +134,50 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     position: 'relative',
     zIndex: 1,
-    paddingBottom: '5rem',
+    paddingBottom: '3.5rem',
     color: '#ffffff',
     overflowX: 'hidden',
   },
-  heroSection: {
+  mainContent: {
     maxWidth: '1200px',
-    margin: '3.5rem auto 2rem auto',
-    padding: '0 1.5rem',
+    margin: '1.25rem auto 0 auto',
+    padding: '0 1.25rem',
+  },
+  heroHeader: {
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    marginBottom: '1.5rem',
   },
   badgeContainer: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.6rem',
+    gap: '0.5rem',
     background: 'rgba(37, 99, 235, 0.15)',
     border: '1px solid rgba(96, 165, 250, 0.35)',
-    padding: '0.45rem 1.1rem',
+    padding: '0.35rem 0.95rem',
     borderRadius: '999px',
-    boxShadow: '0 0 25px rgba(37, 99, 235, 0.25)',
-    marginBottom: '1.5rem',
+    boxShadow: '0 0 20px rgba(37, 99, 235, 0.2)',
+    marginBottom: '0.75rem',
   },
   badgePulse: {
-    width: '8px',
-    height: '8px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
     background: '#4ade80',
-    boxShadow: '0 0 10px #4ade80',
+    boxShadow: '0 0 8px #4ade80',
   },
   badgeText: {
-    fontSize: '0.78rem',
+    fontSize: '0.72rem',
     fontWeight: 900,
     color: '#93c5fd',
-    letterSpacing: '0.06em',
+    letterSpacing: '0.05em',
   },
   mainTitle: {
-    fontSize: 'clamp(3.5rem, 8vw, 6.5rem)',
+    fontSize: 'clamp(2.8rem, 5.5vw, 4.8rem)',
     fontWeight: 950,
-    margin: '0 0 1rem 0',
+    margin: '0 0 0.5rem 0',
     letterSpacing: '-0.04em',
     lineHeight: 1,
   },
@@ -213,216 +185,164 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #ffffff 0%, #93c5fd 40%, #c084fc 75%, #f472b6 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
-    textShadow: '0 0 40px rgba(147, 197, 253, 0.3)',
+    textShadow: '0 0 35px rgba(147, 197, 253, 0.3)',
   },
   titleAi: {
     color: '#38bdf8',
-    textShadow: '0 0 30px rgba(56, 189, 248, 0.6)',
+    textShadow: '0 0 25px rgba(56, 189, 248, 0.6)',
   },
   headlineTickerBox: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    background: 'rgba(15, 23, 42, 0.75)',
+    gap: '0.45rem',
+    background: 'rgba(15, 23, 42, 0.7)',
     backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
-    padding: '0.65rem 1.4rem',
-    borderRadius: '16px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-    marginBottom: '1.75rem',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    padding: '0.45rem 1.1rem',
+    borderRadius: '14px',
+    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.4)',
+    marginBottom: '1.25rem',
   },
   tickerIcon: {
-    fontSize: '1.1rem',
+    fontSize: '1rem',
     color: '#facc15',
   },
   animatedHeadline: {
-    fontSize: '1.05rem',
+    fontSize: '0.92rem',
     fontWeight: 800,
     color: '#f1f5f9',
     letterSpacing: '-0.01em',
   },
-  heroDescription: {
-    maxWidth: '780px',
-    fontSize: '1.12rem',
-    color: '#cbd5e1',
-    lineHeight: 1.65,
-    margin: '0 auto 2.75rem auto',
-    fontWeight: 400,
-  },
   singleCtaWrapper: {
     width: '100%',
-    maxWidth: '560px',
-    marginBottom: '3.5rem',
+    maxWidth: '540px',
     display: 'flex',
     justifyContent: 'center',
+    margin: '0.25rem auto 0 auto',
   },
   mainHeroCta: {
     width: '100%',
     background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #6366f1 100%)',
     border: '1.5px solid rgba(255, 255, 255, 0.4)',
-    borderRadius: '24px',
-    padding: '1.4rem 1.75rem',
+    borderRadius: '20px',
+    padding: '1rem 1.4rem',
     display: 'flex',
     alignItems: 'center',
-    gap: '1.25rem',
+    gap: '1rem',
     cursor: 'pointer',
     color: '#ffffff',
-    boxShadow: '0 20px 50px rgba(37, 99, 235, 0.5), 0 0 35px rgba(124, 58, 237, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.5)',
-    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+    boxShadow: '0 15px 40px rgba(37, 99, 235, 0.45), 0 0 30px rgba(124, 58, 237, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5)',
+    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
     position: 'relative',
     overflow: 'hidden',
   },
   ctaIconBox: {
-    width: '54px',
-    height: '54px',
-    borderRadius: '16px',
+    width: '46px',
+    height: '46px',
+    borderRadius: '14px',
     background: 'rgba(255, 255, 255, 0.15)',
     border: '1px solid rgba(255, 255, 255, 0.3)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
   },
   heroCtaTitle: {
-    fontSize: '1.25rem',
+    fontSize: '1.15rem',
     fontWeight: 950,
     color: '#ffffff',
     letterSpacing: '-0.01em',
   },
   heroCtaSub: {
-    fontSize: '0.82rem',
+    fontSize: '0.76rem',
     color: '#e0e7ff',
-    marginTop: '0.25rem',
-    lineHeight: 1.4,
+    marginTop: '0.15rem',
+    lineHeight: 1.35,
   },
   ctaArrowCircle: {
-    width: '38px',
-    height: '38px',
+    width: '34px',
+    height: '34px',
     borderRadius: '50%',
     background: 'rgba(255, 255, 255, 0.2)',
     border: '1px solid rgba(255, 255, 255, 0.3)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '1.1rem',
+    fontSize: '1rem',
     color: '#ffffff',
     flexShrink: 0,
   },
-  metricsBar: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: '1000px',
-    background: 'rgba(15, 23, 42, 0.7)',
-    backdropFilter: 'blur(25px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '24px',
-    padding: '1.5rem 2rem',
-    boxShadow: '0 20px 45px rgba(0, 0, 0, 0.5)',
-    flexWrap: 'wrap',
-    gap: '1rem',
-  },
-  metricItem: {
-    textAlign: 'center',
-  },
-  metricNumber: {
-    fontSize: '1.75rem',
-    fontWeight: 950,
-    background: 'linear-gradient(135deg, #60a5fa 0%, #c084fc 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  metricLabel: {
-    fontSize: '0.76rem',
-    color: '#94a3b8',
-    fontWeight: 700,
-    marginTop: '0.2rem',
-  },
-  metricDivider: {
-    width: '1px',
-    height: '35px',
-    background: 'rgba(255, 255, 255, 0.1)',
-  },
   pipelineSection: {
-    maxWidth: '1280px',
-    margin: '4rem auto 3rem auto',
-    padding: '0 1.5rem',
+    width: '100%',
+    margin: '1.75rem auto 2rem auto',
   },
   sectionHeader: {
     textAlign: 'center',
-    marginBottom: '2.5rem',
+    marginBottom: '1.25rem',
   },
   sectionPill: {
-    fontSize: '0.72rem',
+    fontSize: '0.68rem',
     fontWeight: 900,
     background: 'rgba(168, 85, 247, 0.2)',
     color: '#c084fc',
     border: '1px solid rgba(168, 85, 247, 0.4)',
-    padding: '0.2rem 0.75rem',
+    padding: '0.15rem 0.65rem',
     borderRadius: '6px',
     letterSpacing: '0.08em',
   },
   sectionTitle: {
-    fontSize: '2.2rem',
+    fontSize: '1.75rem',
     fontWeight: 900,
     color: '#ffffff',
-    margin: '0.6rem 0 0.4rem 0',
+    margin: '0.35rem 0 0 0',
     letterSpacing: '-0.02em',
   },
-  sectionDesc: {
-    fontSize: '0.95rem',
-    color: '#94a3b8',
-    maxWidth: '680px',
-    margin: '0 auto',
-  },
   marketSection: {
-    maxWidth: '1280px',
-    margin: '3rem auto 2rem auto',
-    padding: '0 1.5rem',
+    width: '100%',
+    margin: '2rem auto 1rem auto',
   },
   marketCard: {
-    background: 'rgba(15, 23, 42, 0.8)',
+    background: 'rgba(15, 23, 42, 0.75)',
     backdropFilter: 'blur(30px)',
     border: '1.5px solid rgba(255, 255, 255, 0.12)',
-    borderRadius: '24px',
-    padding: '2.25rem',
-    boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
+    borderRadius: '22px',
+    padding: '1.75rem',
+    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
   },
   marketTitle: {
-    fontSize: '1.35rem',
+    fontSize: '1.2rem',
     fontWeight: 900,
     color: '#ffffff',
     margin: 0,
   },
   marketSub: {
-    fontSize: '0.84rem',
+    fontSize: '0.8rem',
     color: '#94a3b8',
-    margin: '0.2rem 0 0 0',
+    margin: '0.15rem 0 0 0',
   },
   marketGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '1.25rem',
-    marginTop: '1.5rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '1rem',
+    marginTop: '1.25rem',
   },
   marketPillar: {
     background: 'rgba(255, 255, 255, 0.03)',
     border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '16px',
-    padding: '1.25rem',
+    borderRadius: '14px',
+    padding: '1rem 1.15rem',
   },
   pillarTitle: {
-    fontSize: '0.95rem',
+    fontSize: '0.9rem',
     fontWeight: 800,
     color: '#93c5fd',
-    marginBottom: '0.4rem',
+    marginBottom: '0.3rem',
   },
   pillarText: {
-    fontSize: '0.82rem',
+    fontSize: '0.78rem',
     color: '#cbd5e1',
-    lineHeight: 1.5,
+    lineHeight: 1.45,
     margin: 0,
   },
 };
