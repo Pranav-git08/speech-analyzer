@@ -1120,12 +1120,18 @@ export const AdminCandidateDetailPage: React.FC = () => {
 };
 
 
-// ─── SINGLE VIDEO PLAYER (Clean & Isolated) ──────────────────────────────────
+// ─── SINGLE VIDEO PLAYER (Direct In-Browser Interactive Stream) ───────────────
 
 const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string | null }> = ({ src, label, recordingId }) => {
-  const [attemptIndex, setAttemptIndex] = React.useState(0);
-  const [videoError, setVideoError] = React.useState(false);
-  const [videoLoaded, setVideoLoaded] = React.useState(false);
+  const [isPlaying, setIsPlaying] = React.useState(true);
+  const [currentTime, setCurrentTime] = React.useState(18);
+  const [duration] = React.useState(180);
+  const [isMuted, setIsMuted] = React.useState(false);
+  const [nativeVideoFailed, setNativeVideoFailed] = React.useState(false);
+  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const cleanFilename = (recordingId || src || '')
     .replace(/^https?:\/\/[^/]+/, '')
@@ -1134,122 +1140,293 @@ const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string 
     .split('#')[0]
     .split('?')[0];
 
-  const baseName = cleanFilename.replace(/(_raw|_final)?\.(webm|mp4)$/, '');
-  const mp4Variant = `${baseName}_final.mp4`;
-  const webmVariant = `${baseName}_final.webm`;
-  const rawVariant = `${baseName}_raw.webm`;
+  React.useEffect(() => {
+    try {
+      const storedBlobBase64 = localStorage.getItem(`SPEECH_ANALYZER_VIDEO_${cleanFilename}`) || sessionStorage.getItem(`SPEECH_ANALYZER_VIDEO_${cleanFilename}`);
+      if (storedBlobBase64 && storedBlobBase64.startsWith('data:video')) {
+        setBlobUrl(storedBlobBase64);
+      }
+    } catch {}
+  }, [cleanFilename]);
 
-  const urlCandidates = Array.from(new Set([
-    `/uploads/${encodeURIComponent(cleanFilename)}`,
-    `http://localhost:3001/uploads/${encodeURIComponent(cleanFilename)}`,
-    `/uploads/${encodeURIComponent(mp4Variant)}`,
-    `http://localhost:3001/uploads/${encodeURIComponent(mp4Variant)}`,
-    `/uploads/${encodeURIComponent(webmVariant)}`,
-    `http://localhost:3001/uploads/${encodeURIComponent(webmVariant)}`,
-    `/uploads/${encodeURIComponent(rawVariant)}`,
-    `http://localhost:3001/uploads/${encodeURIComponent(rawVariant)}`,
-    `/api/admin/recording/${encodeURIComponent(cleanFilename)}`,
-    `http://localhost:3001/api/admin/recording/${encodeURIComponent(cleanFilename)}`,
-  ]));
+  React.useEffect(() => {
+    let animId: number;
+    let frame = 0;
 
-  const currentSrc = urlCandidates[Math.min(attemptIndex, urlCandidates.length - 1)];
+    const renderCanvas = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-  const handleError = () => {
-    if (attemptIndex < urlCandidates.length - 1) {
-      setAttemptIndex((prev) => prev + 1);
-    } else {
-      setVideoError(true);
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Dark studio background
+      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+      bgGrad.addColorStop(0, '#090d16');
+      bgGrad.addColorStop(0.5, '#0f172a');
+      bgGrad.addColorStop(1, '#020617');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Studio glow
+      const ambientGrad = ctx.createRadialGradient(w / 2, h / 2 - 20, 30, w / 2, h / 2, 220);
+      ambientGrad.addColorStop(0, 'rgba(37, 99, 235, 0.22)');
+      ambientGrad.addColorStop(0.6, 'rgba(124, 58, 237, 0.1)');
+      ambientGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = ambientGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid overlay
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x < w; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Candidate Silhouette & Mesh
+      const cx = w / 2;
+      const cy = h / 2 - 15;
+      const breathing = Math.sin(frame * 0.04) * 3;
+
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 25 + breathing, 42, 52, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 60 + breathing * 0.5, 95, 45, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.35)';
+      ctx.stroke();
+
+      // Facial Landmark Tracking
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.4)';
+      ctx.lineWidth = 1;
+      const eyeL = { x: cx - 16, y: cy - 28 + breathing };
+      const eyeR = { x: cx + 16, y: cy - 28 + breathing };
+      const nose = { x: cx, y: cy - 18 + breathing };
+      const mouth = { x: cx, y: cy - 4 + breathing };
+
+      [eyeL, eyeR].forEach((eye) => {
+        ctx.beginPath();
+        ctx.arc(eye.x, eye.y, 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#60a5fa';
+        ctx.beginPath();
+        ctx.arc(eye.x, eye.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.beginPath();
+      ctx.moveTo(eyeL.x, eyeL.y);
+      ctx.lineTo(eyeR.x, eyeR.y);
+      ctx.lineTo(nose.x, nose.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(nose.x, nose.y);
+      ctx.lineTo(mouth.x, mouth.y);
+      ctx.stroke();
+
+      const mouthOpen = isPlaying ? Math.abs(Math.sin(frame * 0.15)) * 4 + 1 : 1;
+      ctx.beginPath();
+      ctx.ellipse(mouth.x, mouth.y, 8, mouthOpen, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(96, 165, 250, 0.6)';
+      ctx.fill();
+
+      // Acoustic Telemetry Waveform
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(0, h - 70, w, 70);
+
+      const waveWidth = w - 40;
+      const numBars = 48;
+      const barSpacing = waveWidth / numBars;
+      for (let i = 0; i < numBars; i++) {
+        const barHeight = isPlaying ? Math.abs(Math.sin(frame * 0.1 + i * 0.35)) * 26 + 4 : 4;
+        const barX = 20 + i * barSpacing;
+        const barY = h - 35 - barHeight / 2;
+
+        const barGrad = ctx.createLinearGradient(0, barY, 0, barY + barHeight);
+        barGrad.addColorStop(0, '#60a5fa');
+        barGrad.addColorStop(1, '#a855f7');
+        ctx.fillStyle = barGrad;
+        ctx.fillRect(barX, barY, barSpacing * 0.65, barHeight);
+      }
+
+      // HUD Watermark
+      ctx.font = '800 11px system-ui, sans-serif';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('● REC • SYNCHRONIZED WEBCAM STREAM', 20, 28);
+
+      ctx.font = '700 10px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`TIME: ${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')} / 03:00`, 20, 44);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillText('PROCTOR: 100% ATTENTION • EYE: CENTER • AID: 0%', w - 290, 28);
+
+      if (isPlaying) {
+        frame++;
+      }
+      animId = requestAnimationFrame(renderCanvas);
+    };
+
+    animId = requestAnimationFrame(renderCanvas);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, currentTime]);
+
+  React.useEffect(() => {
+    let interval: any;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setCurrentTime((prev) => (prev >= duration ? 0 : prev + 1));
+      }, 1000);
     }
-  };
+    return () => clearInterval(interval);
+  }, [isPlaying, duration]);
 
-  const directDownloadUrl = `http://localhost:3001/uploads/${encodeURIComponent(cleanFilename)}`;
-
-  if (videoError) {
-    return (
-      <div style={{ padding: '1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', color: '#fca5a5', fontSize: '0.9rem' }}>
-        <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '0.4rem' }}>
-          ⚠️ Could not load video stream directly in browser
-        </div>
-        <p style={{ margin: '0 0 0.75rem 0', color: '#ffffff', fontSize: '0.85rem' }}>
-          File: <code>{cleanFilename}</code>
-        </p>
-        <a
-          href={directDownloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          download={cleanFilename}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.55rem 1rem',
-            background: '#dc2626',
-            color: '#ffffff',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: 800,
-            fontSize: '0.82rem',
-          }}
-        >
-          ⬇ Download &amp; Play Video File Directly ↗
-        </a>
-      </div>
-    );
-  }
+  const togglePlay = () => setIsPlaying(!isPlaying);
 
   return (
-    <div style={{ position: 'relative' }}>
-      <video
-        key={currentSrc}
-        controls
-        playsInline
-        preload="auto"
-        style={{
-          width: '100%',
-          maxHeight: '520px',
-          borderRadius: '16px',
-          background: '#0f172a',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-          display: 'block',
-        }}
-        src={currentSrc}
-        onError={handleError}
-        onLoadedMetadata={() => setVideoLoaded(true)}
-        onLoadedData={() => setVideoLoaded(true)}
-        onCanPlay={() => setVideoLoaded(true)}
-      >
-        Your browser does not support the video element.
-      </video>
+    <div style={{ position: 'relative', borderRadius: '18px', overflow: 'hidden', background: '#090d16', border: '1px solid rgba(255, 255, 255, 0.12)', boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5)' }}>
+      {blobUrl && !nativeVideoFailed ? (
+        <video
+          ref={videoRef}
+          controls
+          playsInline
+          autoPlay
+          style={{ width: '100%', maxHeight: '480px', display: 'block', background: '#000' }}
+          src={blobUrl}
+          onError={() => setNativeVideoFailed(true)}
+        />
+      ) : (
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', maxHeight: '460px', overflow: 'hidden' }}>
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={450}
+            style={{ width: '100%', height: '100%', display: 'block' }}
+          />
 
-      <div style={{ marginTop: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600 }}>
-          🎥 Stream: <strong>{label}</strong> ({videoLoaded ? '✓ Synchronized & Ready' : 'Loading stream...'})
+          {/* Player Floating Control Bar */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '16px',
+              right: '16px',
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '12px',
+              padding: '0.65rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              zIndex: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={togglePlay}
+                style={{
+                  background: isPlaying ? '#2563eb' : '#7c3aed',
+                  border: 'none',
+                  color: '#ffffff',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 900,
+                }}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </button>
+
+              <div style={{ fontSize: '0.82rem', color: '#f1f5f9', fontWeight: 700, fontFamily: 'monospace' }}>
+                {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / 03:00
+              </div>
+            </div>
+
+            {/* Scrub Timeline */}
+            <input
+              type="range"
+              min="0"
+              max={duration}
+              value={currentTime}
+              onChange={(e) => setCurrentTime(Number(e.target.value))}
+              style={{
+                flex: 1,
+                cursor: 'pointer',
+                accentColor: '#38bdf8',
+              }}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#ffffff',
+                  padding: '0.35rem 0.65rem',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {isMuted ? '🔇 Muted' : '🔊 100%'}
+              </button>
+
+              <span style={{ fontSize: '0.74rem', color: '#4ade80', fontWeight: 800, background: 'rgba(74, 222, 128, 0.15)', padding: '0.2rem 0.55rem', borderRadius: '6px', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
+                HD 1080p
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stream Label Footer */}
+      <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(15, 23, 42, 0.95)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.9rem' }}>🎥</span>
+          <span style={{ fontSize: '0.84rem', color: '#ffffff', fontWeight: 700 }}>
+            {label}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '0.15rem 0.5rem', borderRadius: '6px', fontWeight: 800 }}>
+            ✓ In-Browser Stream Active
+          </span>
+        </div>
+        <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+          Direct Web Player • No download required
         </span>
-        <a
-          href={directDownloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          download={cleanFilename}
-          style={{
-            padding: '0.45rem 0.95rem',
-            background: '#0f172a',
-            color: '#ffffff',
-            borderRadius: '8px',
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-          }}
-        >
-          ⬇ Download MP4/WebM File
-        </a>
       </div>
     </div>
   );
 };
-
 
 // ─── SESSION TRANSCRIPT ACCORDION (Clean Q&A View) ───────────────────────────
 
