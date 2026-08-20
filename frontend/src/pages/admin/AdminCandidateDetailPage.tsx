@@ -1113,6 +1113,8 @@ export const AdminCandidateDetailPage: React.FC = () => {
 
 
 
+      {/* Candidate-Specific AI Assistant */}
+      <AIAgentChat candidateId={id} />
     </div>
   );
 };

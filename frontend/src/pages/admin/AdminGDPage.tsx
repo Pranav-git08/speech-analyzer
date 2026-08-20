@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
+import AIAgentChat from '../../components/AIAgentChat';
 import {
   getGDCohorts,
   GDCohort,
@@ -649,6 +650,9 @@ export const AdminGDPage: React.FC = () => {
           })
         )}
       </main>
+
+      {/* Global AI Intelligence Assistant */}
+      <AIAgentChat />
     </div>
   );
 };

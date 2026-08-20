@@ -725,6 +725,9 @@ const AdminCandidateListPage: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* Global AI Intelligence Assistant */}
+      <AIAgentChat />
     </div>
   );
 };
