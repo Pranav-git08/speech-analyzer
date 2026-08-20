@@ -4,25 +4,66 @@ import GlassCanvas3D from '../components/GlassCanvas3D';
 import { getCurrentUser } from '../utils/userStore';
 import { getCandidateGDInfo, enrollCandidateInGD, GDCohort, GDCandidateMember } from '../utils/gdStore';
 
+const PROFESSION_OPTIONS = [
+  {
+    id: 'student_ug',
+    label: 'Student / Final Year Undergrad',
+    icon: '🎓',
+    desc: 'B.Tech, B.E, B.Sc, BCA or equivalent undergraduate degree',
+  },
+  {
+    id: 'student_pg',
+    label: 'Postgraduate / Master\'s Student',
+    icon: '📚',
+    desc: 'M.Tech, MS, MBA, MCA or postgraduate specialization',
+  },
+  {
+    id: 'tech_pro',
+    label: 'Working Professional (Software / Tech)',
+    icon: '💻',
+    desc: 'Software Engineer, Developer, QA, DevOps, Data Analyst',
+  },
+  {
+    id: 'nontech_pro',
+    label: 'Working Professional (Business / Non-Tech)',
+    icon: '📊',
+    desc: 'Sales, Marketing, HR, Operations, Finance, Product Management',
+  },
+  {
+    id: 'fresher',
+    label: 'Fresher / Active Job Seeker',
+    icon: '🚀',
+    desc: 'Recent graduate seeking immediate employment opportunities',
+  },
+  {
+    id: 'other',
+    label: 'Other / Freelancer / Consultant',
+    icon: '💼',
+    desc: 'Independent contractor, entrepreneur, or specialized consultant',
+  },
+];
+
 export const GDCandidatePortalPage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
 
-  // Intake / Verification Form state
+  // Intake Form State
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [address, setAddress] = useState('');
-  const [profession, setProfession] = useState('Student / Final Year');
+  const [selectedProfessionId, setSelectedProfessionId] = useState<string>('student_ug');
+  const [customRoleDetails, setCustomRoleDetails] = useState('');
+  const [preferredTrack, setPreferredTrack] = useState<'TJI' | 'NTJI'>(currentUser?.preferredTrack || 'TJI');
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
-  // GD Cohort & Candidate status
+  // GD Cohort & Candidate State
   const [cohort, setCohort] = useState<GDCohort | null>(null);
   const [candidate, setCandidate] = useState<GDCandidateMember | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Initial load - Pre-populate form fields from logged in candidate but ALWAYS show the form first
+  // Initial Load: Pre-fill candidate information
   useEffect(() => {
     const activeEmail = email || currentUser?.email;
     if (activeEmail) {
@@ -32,7 +73,16 @@ export const GDCandidatePortalPage: React.FC = () => {
         if (cand.email && !email) setEmail(cand.email);
         if (cand.phone && !phone) setPhone(cand.phone);
         if (cand.address && !address) setAddress(cand.address);
-        if (cand.targetRole) setProfession(cand.targetRole);
+        if (cand.preferredTrack) setPreferredTrack(cand.preferredTrack);
+        if (cand.targetRole) {
+          const match = PROFESSION_OPTIONS.find((p) => p.label.toLowerCase() === cand.targetRole?.toLowerCase());
+          if (match) {
+            setSelectedProfessionId(match.id);
+          } else {
+            setSelectedProfessionId('other');
+            setCustomRoleDetails(cand.targetRole);
+          }
+        }
       }
     }
   }, [currentUser]);
@@ -58,9 +108,12 @@ export const GDCandidatePortalPage: React.FC = () => {
       return;
     }
 
-    const finalProfession = profession.trim();
+    const currentProfObj = PROFESSION_OPTIONS.find((p) => p.id === selectedProfessionId);
+    const finalRole = selectedProfessionId === 'other'
+      ? (customRoleDetails.trim() || 'Freelancer / Consultant')
+      : (customRoleDetails.trim() ? `${currentProfObj?.label} (${customRoleDetails.trim()})` : (currentProfObj?.label || 'Candidate'));
 
-    // Get aptitude score if recorded
+    // Retrieve Aptitude score from localStorage
     let aptScore = 12;
     try {
       const savedScore = localStorage.getItem('SPEECH_ANALYZER_LAST_SCORE');
@@ -75,8 +128,8 @@ export const GDCandidatePortalPage: React.FC = () => {
       address: address.trim(),
       aptitudeScore: aptScore,
       aptitudeTotal: 15,
-      preferredTrack: currentUser?.preferredTrack || 'TJI',
-      targetRole: finalProfession,
+      preferredTrack: preferredTrack,
+      targetRole: finalRole,
     });
 
     const { cohort: updatedCohort, candidate: updatedCand } = getCandidateGDInfo(email.trim().toLowerCase());
@@ -99,13 +152,13 @@ export const GDCandidatePortalPage: React.FC = () => {
     <div style={styles.pageContainer}>
       <GlassCanvas3D mode="mixed" intensity={1.2} />
 
-      {/* Top Header */}
+      {/* Header */}
       <header style={styles.header}>
         <div style={styles.logoRow}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
             <div style={styles.logoIcon}>🎙️</div>
             <span style={styles.logoText}>VOXIS<span style={{ color: '#60a5fa' }}>.AI</span></span>
-            <span style={styles.stagePill}>STAGE 02: GD (GROUP DISCUSSION) ROUND</span>
+            <span style={styles.stagePill}>STAGE 02: GD ROUND</span>
           </div>
           <button
             onClick={() => {
@@ -132,15 +185,15 @@ export const GDCandidatePortalPage: React.FC = () => {
 
       {/* Main Content Area */}
       <main style={styles.mainWrapper}>
-        {/* ── STEP 1: INTAKE & BASIC DETAILS CONFIRMATION FORM ── */}
+        {/* ── STEP 1: INTAKE & VERIFICATION FORM ── */}
         {!isFormSubmitted ? (
           <div style={styles.formCard} className="animate-spring">
-            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={styles.gdIconBadge}>👥</div>
               <span style={styles.formPill}>STAGE 02 INTAKE</span>
               <h1 style={styles.formTitle}>Group Discussion (GD) Profile Verification</h1>
               <p style={styles.formSubtitle}>
-                Congratulations on clearing the Aptitude Round! Please verify your basic registered details to be placed into your AI 5-member GD Cohort.
+                Congratulations on clearing the Aptitude Round! Please verify your contact details, address, and current profession to be assigned to your 5-member GD cohort.
               </p>
             </div>
 
@@ -169,7 +222,7 @@ export const GDCandidatePortalPage: React.FC = () => {
               {/* Registered Email ID */}
               <div style={styles.inputGroup}>
                 <label style={styles.inputLabel}>
-                  Registered Email Address <span style={{ color: '#f87171' }}>*</span>
+                  Already Registered Email Address <span style={{ color: '#f87171' }}>*</span>
                 </label>
                 <input
                   type="email"
@@ -199,7 +252,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                 />
               </div>
 
-              {/* Residential Address / City */}
+              {/* Candidate Address */}
               <div style={styles.inputGroup}>
                 <label style={styles.inputLabel}>
                   Candidate Address / City <span style={{ color: '#f87171' }}>*</span>
@@ -214,60 +267,106 @@ export const GDCandidatePortalPage: React.FC = () => {
                 />
               </div>
 
-              {/* Current Working / Profession */}
+              {/* Current Working / Profession Options */}
               <div style={styles.inputGroup}>
                 <label style={styles.inputLabel}>
                   Current Working / Profession <span style={{ color: '#f87171' }}>*</span>
                 </label>
-
-                {/* Quick Selection Preset Badges */}
-                <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
-                  {[
-                    '🎓 Student / Final Year',
-                    '💻 Software Engineer / Tech',
-                    '📊 Business / Data Analyst',
-                    '🚀 Fresher / Job Seeker',
-                    '💼 Working Professional',
-                  ].map((preset) => {
-                    const cleanName = preset.replace(/^[^\s]+\s/, '');
-                    const isSelected = profession.toLowerCase().includes(cleanName.toLowerCase().split('/')[0].trim());
+                <div style={styles.optionsContainer}>
+                  {PROFESSION_OPTIONS.map((opt) => {
+                    const isSelected = selectedProfessionId === opt.id;
                     return (
-                      <button
-                        type="button"
-                        key={preset}
-                        onClick={() => setProfession(cleanName)}
+                      <div
+                        key={opt.id}
+                        onClick={() => setSelectedProfessionId(opt.id)}
                         style={{
-                          background: isSelected ? 'rgba(96, 165, 250, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-                          border: isSelected ? '1.5px solid #60a5fa' : '1px solid rgba(255, 255, 255, 0.12)',
-                          color: isSelected ? '#ffffff' : '#cbd5e1',
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
+                          ...styles.optionCard,
+                          borderColor: isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.12)',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                          boxShadow: isSelected ? '0 0 20px rgba(59, 130, 246, 0.3)' : 'none',
                         }}
                       >
-                        {preset}
-                      </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontSize: '1.4rem' }}>{opt.icon}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ ...styles.optionLabel, color: isSelected ? '#ffffff' : '#e2e8f0' }}>
+                              {opt.label}
+                            </div>
+                            <div style={styles.optionDesc}>{opt.desc}</div>
+                          </div>
+                          <div
+                            style={{
+                              ...styles.radioIndicator,
+                              borderColor: isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.3)',
+                              background: isSelected ? '#3b82f6' : 'transparent',
+                            }}
+                          >
+                            {isSelected && <div style={styles.radioInnerDot} />}
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                <input
-                  type="text"
-                  value={profession}
-                  onChange={(e) => setProfession(e.target.value)}
-                  placeholder="e.g. Student / B.Tech CSE, Software Engineer, Frontend Developer, etc."
-                  required
-                  style={styles.textInput}
-                />
-                <span style={styles.inputHint}>
-                  Click a quick preset above or type your exact role / college branch.
-                </span>
+                {/* Additional Role / College Branch Specification */}
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label style={{ ...styles.inputLabel, fontSize: '0.8rem', color: '#cbd5e1' }}>
+                    Specific Role / College Branch / Company (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={customRoleDetails}
+                    onChange={(e) => setCustomRoleDetails(e.target.value)}
+                    placeholder="e.g. B.Tech Computer Science, Senior React Developer, MBA Marketing, etc."
+                    style={styles.textInput}
+                  />
+                </div>
               </div>
 
-              {/* Submit CTA */}
+              {/* Preferred Interview Track Options */}
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>
+                  Preferred Interview Track
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                  <div
+                    onClick={() => setPreferredTrack('TJI')}
+                    style={{
+                      ...styles.optionCard,
+                      borderColor: preferredTrack === 'TJI' ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)',
+                      background: preferredTrack === 'TJI' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>💻</span>
+                      <div>
+                        <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>TJI (Technical)</strong>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Software, Cloud &amp; AI Engineering</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setPreferredTrack('NTJI')}
+                    style={{
+                      ...styles.optionCard,
+                      borderColor: preferredTrack === 'NTJI' ? '#a855f7' : 'rgba(255, 255, 255, 0.12)',
+                      background: preferredTrack === 'NTJI' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>📊</span>
+                      <div>
+                        <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>NTJI (Non-Technical)</strong>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Product, Sales, HR &amp; Ops</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 style={styles.submitBtn}
@@ -278,9 +377,9 @@ export const GDCandidatePortalPage: React.FC = () => {
             </form>
           </div>
         ) : (
-          /* ── STEP 2: COHORT DETAILS, SCHEDULE & STATUS DASHBOARD ── */
+          /* ── STEP 2: COHORT DETAILS & DASHBOARD ── */
           <div>
-            {/* ── CASE 1: APPROVED BY ADMIN (GOOD PERFORMANCE) ── */}
+            {/* Case 1: Approved */}
             {isApproved && candidate?.uniqueInterviewCode ? (
               <div style={styles.approvedCard}>
                 <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>🏆</div>
@@ -289,7 +388,6 @@ export const GDCandidatePortalPage: React.FC = () => {
                   Congratulations, <strong style={{ color: '#ffffff' }}>{candidate.fullName}</strong>! The administrative evaluation team approved your performance in <strong style={{ color: '#93c5fd' }}>{cohort?.teamName}</strong>.
                 </p>
 
-                {/* Unique Interview Access Code Display */}
                 <div style={styles.codeRevealBox}>
                   <span style={{ fontSize: '0.82rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Your Official Interview Access Code
@@ -308,7 +406,6 @@ export const GDCandidatePortalPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Navigation to TJI or NTJI */}
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate('/login/tji')}
@@ -325,7 +422,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                 </div>
               </div>
             ) : isRejected ? (
-              /* ── CASE 2: REJECTED FEEDBACK ── */
+              /* Case 2: Rejected */
               <div style={styles.rejectedCard}>
                 <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>💙</div>
                 <h1 style={styles.rejectedTitle}>Assessment Feedback &amp; Update</h1>
@@ -353,7 +450,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                 </button>
               </div>
             ) : (
-              /* ── CASE 3: SCHEDULED / PENDING GD VIEW ── */
+              /* Case 3: Scheduled / Pending */
               <div style={styles.statusCard}>
                 <div style={styles.teamHeaderBox}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🛡️</div>
@@ -368,8 +465,8 @@ export const GDCandidatePortalPage: React.FC = () => {
                     <span style={styles.profileChip}>👤 {candidate?.fullName || fullName}</span>
                     <span style={styles.profileChip}>📧 {candidate?.email || email}</span>
                     <span style={styles.profileChip}>📱 {candidate?.phone || phone}</span>
-                    {candidate?.address && <span style={styles.profileChip}>📍 {candidate.address}</span>}
-                    <span style={styles.profileChip}>💼 {candidate?.targetRole || profession}</span>
+                    {(candidate?.address || address) && <span style={styles.profileChip}>📍 {candidate?.address || address}</span>}
+                    <span style={styles.profileChip}>💼 {candidate?.targetRole || 'Candidate'}</span>
                   </div>
 
                   <div style={{ marginTop: '0.85rem' }}>
@@ -610,15 +707,15 @@ const styles: Record<string, React.CSSProperties> = {
   formGrid: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem',
+    gap: '1.35rem',
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.4rem',
+    gap: '0.45rem',
   },
   inputLabel: {
-    fontSize: '0.84rem',
+    fontSize: '0.86rem',
     fontWeight: 800,
     color: '#e2e8f0',
   },
@@ -631,26 +728,55 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.95rem',
     outline: 'none',
   },
-  selectInput: {
-    background: '#1e293b',
-    border: '1px solid rgba(255, 255, 255, 0.18)',
-    borderRadius: '12px',
-    padding: '0.85rem 1rem',
-    color: '#ffffff',
-    fontSize: '0.95rem',
-    outline: 'none',
-  },
   inputHint: {
     fontSize: '0.75rem',
     color: '#94a3b8',
     marginTop: '0.15rem',
   },
+  optionsContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '0.75rem',
+  },
+  optionCard: {
+    border: '1px solid',
+    borderRadius: '14px',
+    padding: '0.9rem 1rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+  },
+  optionLabel: {
+    fontSize: '0.88rem',
+    fontWeight: 800,
+  },
+  optionDesc: {
+    fontSize: '0.74rem',
+    color: '#94a3b8',
+    marginTop: '0.15rem',
+    lineHeight: 1.35,
+  },
+  radioIndicator: {
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    border: '2px solid',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  radioInnerDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#ffffff',
+  },
   submitBtn: {
-    marginTop: '0.75rem',
+    marginTop: '1rem',
     background: 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)',
     border: '1px solid rgba(255, 255, 255, 0.3)',
     borderRadius: '14px',
-    padding: '1.05rem',
+    padding: '1.1rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
