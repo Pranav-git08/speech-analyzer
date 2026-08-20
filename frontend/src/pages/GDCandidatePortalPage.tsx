@@ -9,13 +9,13 @@ const PROFESSION_OPTIONS = [
     id: 'student_ug',
     label: 'Student / Final Year Undergrad',
     icon: '🎓',
-    desc: 'B.Tech, B.E, B.Sc, BCA or equivalent undergraduate degree',
+    desc: 'B.Tech, B.E, B.Sc, BCA or equivalent degree',
   },
   {
     id: 'student_pg',
     label: 'Postgraduate / Master\'s Student',
     icon: '📚',
-    desc: 'M.Tech, MS, MBA, MCA or postgraduate specialization',
+    desc: 'M.Tech, MS, MBA, MCA specialization',
   },
   {
     id: 'tech_pro',
@@ -27,19 +27,19 @@ const PROFESSION_OPTIONS = [
     id: 'nontech_pro',
     label: 'Working Professional (Business / Non-Tech)',
     icon: '📊',
-    desc: 'Sales, Marketing, HR, Operations, Finance, Product Management',
+    desc: 'Sales, Marketing, HR, Operations, Finance, Product',
   },
   {
     id: 'fresher',
     label: 'Fresher / Active Job Seeker',
     icon: '🚀',
-    desc: 'Recent graduate seeking immediate employment opportunities',
+    desc: 'Recent graduate seeking immediate employment',
   },
   {
     id: 'other',
     label: 'Other / Freelancer / Consultant',
     icon: '💼',
-    desc: 'Independent contractor, entrepreneur, or specialized consultant',
+    desc: 'Independent contractor, founder, or consultant',
   },
 ];
 
@@ -193,7 +193,7 @@ export const GDCandidatePortalPage: React.FC = () => {
               <span style={styles.formPill}>STAGE 02 INTAKE</span>
               <h1 style={styles.formTitle}>Group Discussion (GD) Profile Verification</h1>
               <p style={styles.formSubtitle}>
-                Congratulations on clearing the Aptitude Round! Please verify your contact details, address, and current profession to be assigned to your 5-member GD cohort.
+                Congratulations on clearing the Aptitude Round! Please verify your contact details, address, and choose your current working profession to join your 5-member GD cohort.
               </p>
             </div>
 
@@ -255,7 +255,7 @@ export const GDCandidatePortalPage: React.FC = () => {
               {/* Candidate Address */}
               <div style={styles.inputGroup}>
                 <label style={styles.inputLabel}>
-                  Candidate Address / City <span style={{ color: '#f87171' }}>*</span>
+                  Candidate Residential Address / City <span style={{ color: '#f87171' }}>*</span>
                 </label>
                 <textarea
                   value={address}
@@ -267,26 +267,42 @@ export const GDCandidatePortalPage: React.FC = () => {
                 />
               </div>
 
-              {/* Current Working / Profession Options */}
+              {/* Current Working / Profession Single-Select Radio Cards */}
               <div style={styles.inputGroup}>
-                <label style={styles.inputLabel}>
-                  Current Working / Profession <span style={{ color: '#f87171' }}>*</span>
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={styles.inputLabel}>
+                    Current Working / Profession <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: '#93c5fd', fontWeight: 750 }}>
+                    (Select 1 Option Only)
+                  </span>
+                </div>
+
                 <div style={styles.optionsContainer}>
                   {PROFESSION_OPTIONS.map((opt) => {
                     const isSelected = selectedProfessionId === opt.id;
                     return (
-                      <div
+                      <label
                         key={opt.id}
-                        onClick={() => setSelectedProfessionId(opt.id)}
                         style={{
                           ...styles.optionCard,
                           borderColor: isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.12)',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                          boxShadow: isSelected ? '0 0 20px rgba(59, 130, 246, 0.3)' : 'none',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                          boxShadow: isSelected ? '0 0 20px rgba(59, 130, 246, 0.35)' : 'none',
+                          cursor: 'pointer',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {/* Hidden Native Radio Input ensuring strict single-select */}
+                        <input
+                          type="radio"
+                          name="candidate_profession_radio"
+                          value={opt.id}
+                          checked={isSelected}
+                          onChange={() => setSelectedProfessionId(opt.id)}
+                          style={{ display: 'none' }}
+                        />
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
                           <span style={{ fontSize: '1.4rem' }}>{opt.icon}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ ...styles.optionLabel, color: isSelected ? '#ffffff' : '#e2e8f0' }}>
@@ -294,6 +310,8 @@ export const GDCandidatePortalPage: React.FC = () => {
                             </div>
                             <div style={styles.optionDesc}>{opt.desc}</div>
                           </div>
+
+                          {/* Custom Radio Ring */}
                           <div
                             style={{
                               ...styles.radioIndicator,
@@ -304,7 +322,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                             {isSelected && <div style={styles.radioInnerDot} />}
                           </div>
                         </div>
-                      </div>
+                      </label>
                     );
                   })}
                 </div>
@@ -324,45 +342,87 @@ export const GDCandidatePortalPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Preferred Interview Track Options */}
+              {/* Preferred Interview Track Radio Options */}
               <div style={styles.inputGroup}>
-                <label style={styles.inputLabel}>
-                  Preferred Interview Track
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                  <div
-                    onClick={() => setPreferredTrack('TJI')}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={styles.inputLabel}>
+                    Preferred Interview Track <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 750 }}>
+                    (Select 1 Track Only)
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
+                  <label
                     style={{
                       ...styles.optionCard,
                       borderColor: preferredTrack === 'TJI' ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)',
                       background: preferredTrack === 'TJI' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                      boxShadow: preferredTrack === 'TJI' ? '0 0 20px rgba(59, 130, 246, 0.35)' : 'none',
+                      cursor: 'pointer',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.2rem' }}>💻</span>
-                      <div>
-                        <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>TJI (Technical)</strong>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Software, Cloud &amp; AI Engineering</div>
+                    <input
+                      type="radio"
+                      name="candidate_track_radio"
+                      value="TJI"
+                      checked={preferredTrack === 'TJI'}
+                      onChange={() => setPreferredTrack('TJI')}
+                      style={{ display: 'none' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{ fontSize: '1.4rem' }}>💻</span>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>TJI (Technical Track)</strong>
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Software, Cloud, Systems &amp; AI</div>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.radioIndicator,
+                          borderColor: preferredTrack === 'TJI' ? '#60a5fa' : 'rgba(255, 255, 255, 0.3)',
+                          background: preferredTrack === 'TJI' ? '#3b82f6' : 'transparent',
+                        }}
+                      >
+                        {preferredTrack === 'TJI' && <div style={styles.radioInnerDot} />}
                       </div>
                     </div>
-                  </div>
+                  </label>
 
-                  <div
-                    onClick={() => setPreferredTrack('NTJI')}
+                  <label
                     style={{
                       ...styles.optionCard,
                       borderColor: preferredTrack === 'NTJI' ? '#a855f7' : 'rgba(255, 255, 255, 0.12)',
                       background: preferredTrack === 'NTJI' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.04)',
+                      boxShadow: preferredTrack === 'NTJI' ? '0 0 20px rgba(168, 85, 247, 0.35)' : 'none',
+                      cursor: 'pointer',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.2rem' }}>📊</span>
-                      <div>
-                        <strong style={{ color: '#ffffff', fontSize: '0.9rem' }}>NTJI (Non-Technical)</strong>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Product, Sales, HR &amp; Ops</div>
+                    <input
+                      type="radio"
+                      name="candidate_track_radio"
+                      value="NTJI"
+                      checked={preferredTrack === 'NTJI'}
+                      onChange={() => setPreferredTrack('NTJI')}
+                      style={{ display: 'none' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{ fontSize: '1.4rem' }}>📊</span>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>NTJI (Non-Technical Track)</strong>
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Product, Sales, HR, Finance &amp; Ops</div>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.radioIndicator,
+                          borderColor: preferredTrack === 'NTJI' ? '#a855f7' : 'rgba(255, 255, 255, 0.3)',
+                          background: preferredTrack === 'NTJI' ? '#a855f7' : 'transparent',
+                        }}
+                      >
+                        {preferredTrack === 'NTJI' && <div style={styles.radioInnerDot} />}
                       </div>
                     </div>
-                  </div>
+                  </label>
                 </div>
               </div>
 
@@ -742,7 +802,8 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid',
     borderRadius: '14px',
     padding: '0.9rem 1rem',
-    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
     transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
   },
   optionLabel: {
