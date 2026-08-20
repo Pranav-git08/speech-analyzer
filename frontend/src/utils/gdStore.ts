@@ -415,3 +415,55 @@ export function validateInterviewAccessCode(code: string): {
 
   return { valid: false };
 }
+
+// ── 6. Delete Candidate from GD Cohort ──────────────────────────────────────
+export function deleteGDCandidate(
+  cohortId: string,
+  candidateEmail: string
+): { success: boolean; message: string } {
+  const cohorts = getGDCohorts();
+  const cohort = cohorts.find((c) => c.id === cohortId);
+
+  if (!cohort) {
+    return { success: false, message: 'Cohort not found.' };
+  }
+
+  const normalizedEmail = candidateEmail.toLowerCase().trim();
+  const initialCount = cohort.candidates.length;
+  const removedCand = cohort.candidates.find((m) => m.email.toLowerCase().trim() === normalizedEmail);
+
+  cohort.candidates = cohort.candidates.filter(
+    (m) => m.email.toLowerCase().trim() !== normalizedEmail
+  );
+
+  if (cohort.candidates.length === initialCount) {
+    return { success: false, message: 'Candidate not found in cohort.' };
+  }
+
+  const candName = removedCand ? removedCand.fullName : 'Candidate';
+  saveGDCohorts(cohorts);
+
+  return {
+    success: true,
+    message: `Candidate ${candName} (${candidateEmail}) has been deleted from ${cohort.teamName}.`,
+  };
+}
+
+// ── 7. Delete Entire GD Cohort ──────────────────────────────────────────────
+export function deleteGDCohort(cohortId: string): { success: boolean; message: string } {
+  let cohorts = getGDCohorts();
+  const target = cohorts.find((c) => c.id === cohortId);
+
+  if (!target) {
+    return { success: false, message: 'Cohort not found.' };
+  }
+
+  const teamName = target.teamName;
+  cohorts = cohorts.filter((c) => c.id !== cohortId);
+  saveGDCohorts(cohorts);
+
+  return {
+    success: true,
+    message: `Cohort "${teamName}" and its candidate records have been deleted.`,
+  };
+}
