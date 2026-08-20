@@ -23,19 +23,20 @@ export const GDCandidatePortalPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Initial load
+  // Initial load - Pre-populate form fields from logged in candidate but ALWAYS show the form first
   useEffect(() => {
     const activeEmail = email || currentUser?.email;
     if (activeEmail) {
-      const { cohort: c, candidate: cand } = getCandidateGDInfo(activeEmail);
-      if (c && cand) {
-        setCohort(c);
-        setCandidate(cand);
-        if (cand.address) setAddress(cand.address);
-        setIsFormSubmitted(true);
+      const { candidate: cand } = getCandidateGDInfo(activeEmail);
+      if (cand) {
+        if (cand.fullName && !fullName) setFullName(cand.fullName);
+        if (cand.email && !email) setEmail(cand.email);
+        if (cand.phone && !phone) setPhone(cand.phone);
+        if (cand.address && !address) setAddress(cand.address);
+        if (cand.targetRole) setProfession(cand.targetRole);
       }
     }
-  }, [currentUser, email]);
+  }, [currentUser]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +55,18 @@ export const GDCandidatePortalPage: React.FC = () => {
       return;
     }
     if (!address.trim()) {
-      setFormError('Please enter your address / city.');
+      setFormError('Please enter your residential address / city.');
       return;
     }
 
     const finalProfession = profession === 'Other' ? (customProfession || 'Other') : profession;
+
+    // Get aptitude score if recorded
+    let aptScore = 12;
+    try {
+      const savedScore = localStorage.getItem('SPEECH_ANALYZER_LAST_SCORE');
+      if (savedScore) aptScore = parseInt(savedScore, 10) || 12;
+    } catch {}
 
     enrollCandidateInGD({
       id: currentUser?.id || `cand-${Date.now()}`,
@@ -66,7 +74,7 @@ export const GDCandidatePortalPage: React.FC = () => {
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
       address: address.trim(),
-      aptitudeScore: 12, // Default qualified score
+      aptitudeScore: aptScore,
       aptitudeTotal: 15,
       preferredTrack: currentUser?.preferredTrack || 'TJI',
       targetRole: finalProfession,

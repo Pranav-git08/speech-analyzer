@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../components/GlassCanvas3D';
 import { APTITUDE_QUESTIONS } from '../data/aptitudeQuestions';
 import { getCurrentUser } from '../utils/userStore';
-import { enrollCandidateInGD } from '../utils/gdStore';
 
 type TestState = 'instructions' | 'in_progress' | 'terminated' | 'completed';
 
@@ -56,16 +55,10 @@ export const AptitudeRoundPage: React.FC = () => {
 
     const isPassed = correctCount >= 7; // Required: 7 out of 15 to pass
 
-    if (isPassed && currentUser) {
-      enrollCandidateInGD({
-        id: currentUser.id,
-        fullName: currentUser.fullName,
-        email: currentUser.email,
-        phone: currentUser.phone,
-        aptitudeScore: correctCount,
-        aptitudeTotal: APTITUDE_QUESTIONS.length,
-        preferredTrack: currentUser.preferredTrack,
-      });
+    if (isPassed) {
+      try {
+        localStorage.setItem('SPEECH_ANALYZER_LAST_SCORE', String(correctCount));
+      } catch {}
     }
 
     const scoreData = {
