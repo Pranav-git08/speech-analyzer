@@ -193,7 +193,7 @@ export const GDCandidatePortalPage: React.FC = () => {
               <span style={styles.formPill}>STAGE 02 INTAKE</span>
               <h1 style={styles.formTitle}>Group Discussion (GD) Profile Verification</h1>
               <p style={styles.formSubtitle}>
-                Congratulations on clearing the Aptitude Round! Please verify your contact details, residential address, and select your current working profession to join your 5-member GD cohort.
+                Congratulations on clearing the Aptitude Round! Please verify your contact details, residential address, and select your current working profession to register for the GD round.
               </p>
             </div>
 
@@ -408,13 +408,13 @@ export const GDCandidatePortalPage: React.FC = () => {
                 type="submit"
                 style={styles.submitBtn}
               >
-                <span>🛡️ Confirm Details &amp; Enter GD Cohort</span>
+                <span>🛡️ Submit Details &amp; Register for GD Round</span>
                 <span style={{ fontSize: '1.1rem' }}>➔</span>
               </button>
             </form>
           </div>
         ) : (
-          /* ── STEP 2: COHORT DETAILS & DASHBOARD ── */
+          /* ── STEP 2: POST-SUBMISSION STATUS & EMAIL VENUE NOTIFICATION ── */
           <div>
             {/* Case 1: Approved */}
             {isApproved && candidate?.uniqueInterviewCode ? (
@@ -487,36 +487,61 @@ export const GDCandidatePortalPage: React.FC = () => {
                 </button>
               </div>
             ) : (
-              /* Case 3: Scheduled / Pending */
+              /* Case 3: Submission Confirmed & Awaiting Email Venue Pass */
               <div style={styles.statusCard}>
-                <div style={styles.teamHeaderBox}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🛡️</div>
-                  <span style={styles.cohortTag}>AI ASSIGNED GD COHORT</span>
-                  <h1 style={styles.teamTitle}>{cohort?.teamName || 'Cohort Alpha: Quantum Synergy'}</h1>
-                  <p style={styles.teamDesc}>
-                    You have been placed into this 5-candidate professional discussion group based on your verified aptitude performance.
+                {/* ── PROMINENT EMAIL VENUE NOTIFICATION BANNER ── */}
+                <div style={styles.emailNoticeHero}>
+                  <div style={{ fontSize: '3.2rem', marginBottom: '0.65rem' }}>✉️</div>
+                  <span style={styles.successPill}>✓ DETAILS SUBMITTED SUCCESSFULLY</span>
+                  <h2 style={styles.emailNoticeTitle}>
+                    We will send the GD Round venue, date, and time via email
+                  </h2>
+                  <p style={styles.emailNoticeSub}>
+                    Your registration details have been received and verified. Our administrative proctoring team is scheduling your group session. Official venue details, date, time slot, and session room link will be dispatched directly to <strong style={{ color: '#93c5fd', textDecoration: 'underline' }}>{candidate?.email || email}</strong>.
                   </p>
-                  
-                  {/* Verified Candidate Profile Bar */}
-                  <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1rem' }}>
-                    <span style={styles.profileChip}>👤 {candidate?.fullName || fullName}</span>
-                    <span style={styles.profileChip}>📧 {candidate?.email || email}</span>
-                    <span style={styles.profileChip}>📱 {candidate?.phone || phone}</span>
-                    {(candidate?.address || address) && <span style={styles.profileChip}>📍 {candidate?.address || address}</span>}
-                    <span style={styles.profileChip}>💼 {candidate?.targetRole || 'Candidate'}</span>
-                  </div>
+                </div>
 
-                  <div style={{ marginTop: '0.85rem' }}>
+                {/* Candidate Confirmed Profile Summary */}
+                <div style={styles.profileSummaryBox}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <strong style={{ color: '#ffffff', fontSize: '0.95rem' }}>📋 Verified Candidate Profile</strong>
                     <button
                       onClick={() => setIsFormSubmitted(false)}
                       style={styles.editDetailsBtn}
                     >
-                      ✏️ Edit My Contact, Address &amp; Profession
+                      ✏️ Edit My Details
                     </button>
+                  </div>
+
+                  <div style={styles.profileGrid}>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>👤 Full Name</span>
+                      <strong style={styles.profileItemVal}>{candidate?.fullName || fullName}</strong>
+                    </div>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>📧 Registered Email</span>
+                      <strong style={styles.profileItemVal}>{candidate?.email || email}</strong>
+                    </div>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>📱 Phone Number</span>
+                      <strong style={styles.profileItemVal}>{candidate?.phone || phone}</strong>
+                    </div>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>📍 Residential Address</span>
+                      <strong style={styles.profileItemVal}>{candidate?.address || address || 'Provided'}</strong>
+                    </div>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>💼 Current Profession</span>
+                      <strong style={styles.profileItemVal}>{candidate?.targetRole || 'Candidate'}</strong>
+                    </div>
+                    <div style={styles.profileItem}>
+                      <span style={styles.profileItemLabel}>🎯 Preferred Track</span>
+                      <strong style={styles.profileItemVal}>{candidate?.preferredTrack || preferredTrack} Track</strong>
+                    </div>
                   </div>
                 </div>
 
-                {/* Venue & Schedule Card */}
+                {/* Venue & Schedule Pass (when scheduled by Admin) */}
                 {isScheduled && cohort?.schedule ? (
                   <div style={styles.schedulePassBox}>
                     <div style={styles.scheduleHeaderRow}>
@@ -547,28 +572,23 @@ export const GDCandidatePortalPage: React.FC = () => {
                     </div>
 
                     <div style={styles.invitationNotice}>
-                      📧 Official invitations with these venue details have been dispatched to your email (<strong>{candidate?.email || email}</strong>).
+                      📧 Official confirmation pass with these venue details has been dispatched to <strong>{candidate?.email || email}</strong>.
                     </div>
                   </div>
-                ) : (
-                  <div style={styles.pendingScheduleBox}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>⏳</div>
-                    <strong style={{ color: '#fef08a', fontSize: '0.98rem' }}>
-                      Awaiting Administrative Venue &amp; Time Slot Assignment
-                    </strong>
-                    <p style={{ margin: '0.4rem 0 0 0', color: '#cbd5e1', fontSize: '0.86rem' }}>
-                      The administrative proctor is currently scheduling the date, time, and room number for <strong>{cohort?.teamName}</strong>. You will receive an email notification the moment the schedule is confirmed.
-                    </p>
-                  </div>
-                )}
+                ) : null}
 
-                {/* 5-Member Team Roster */}
+                {/* Real Qualified Cohort Roster (Only real candidates who registered and passed aptitude) */}
                 <div style={styles.teamRosterBox}>
                   <div style={styles.rosterHeaderRow}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#ffffff', fontWeight: 900 }}>
-                      👥 5-Member Cohort Roster ({cohort?.candidates.length || 0} / 5 Assigned)
-                    </h3>
-                    <span style={styles.rosterTag}>AI BALANCED PEERS</span>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#ffffff', fontWeight: 900 }}>
+                        👥 Assigned GD Cohort: <span style={{ color: '#60a5fa' }}>{cohort?.teamName || 'Cohort Alpha'}</span>
+                      </h3>
+                      <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                        {cohort?.candidates.length || 1} / 5 Qualified Candidates Enrolled
+                      </div>
+                    </div>
+                    <span style={styles.rosterTag}>REAL QUALIFIED CANDIDATES ONLY</span>
                   </div>
 
                   <div style={styles.candidateGrid}>
@@ -605,6 +625,12 @@ export const GDCandidatePortalPage: React.FC = () => {
                       );
                     })}
                   </div>
+
+                  {(cohort?.candidates.length || 1) < 5 && (
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
+                      ⏳ Additional qualified candidates will be added automatically to this cohort as they complete and pass the Aptitude Round.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -836,31 +862,70 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2.25rem',
     boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
   },
-  teamHeaderBox: {
+  emailNoticeHero: {
     textAlign: 'center',
+    background: 'rgba(37, 99, 235, 0.15)',
+    border: '1.5px solid rgba(96, 165, 250, 0.4)',
+    borderRadius: '20px',
+    padding: '2rem 1.5rem',
     marginBottom: '2rem',
+    boxShadow: '0 10px 35px rgba(37, 99, 235, 0.25)',
   },
-  cohortTag: {
-    fontSize: '0.7rem',
+  successPill: {
+    fontSize: '0.72rem',
     fontWeight: 900,
-    background: 'rgba(236, 72, 153, 0.2)',
-    color: '#f472b6',
-    border: '1px solid rgba(236, 72, 153, 0.4)',
-    padding: '0.2rem 0.75rem',
+    background: 'rgba(74, 222, 128, 0.2)',
+    color: '#4ade80',
+    border: '1px solid rgba(74, 222, 128, 0.5)',
+    padding: '0.25rem 0.85rem',
     borderRadius: '6px',
     letterSpacing: '0.08em',
   },
-  teamTitle: {
-    fontSize: '1.9rem',
+  emailNoticeTitle: {
+    fontSize: '1.65rem',
     fontWeight: 900,
     color: '#ffffff',
-    margin: '0.6rem 0 0.4rem 0',
+    margin: '0.85rem 0 0.5rem 0',
   },
-  teamDesc: {
-    fontSize: '0.88rem',
+  emailNoticeSub: {
+    fontSize: '0.94rem',
     color: '#cbd5e1',
-    maxWidth: '560px',
+    maxWidth: '650px',
     margin: '0 auto',
+    lineHeight: 1.6,
+  },
+  profileSummaryBox: {
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    padding: '1.25rem 1.5rem',
+    marginBottom: '2rem',
+  },
+  profileGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '0.85rem',
+    marginTop: '0.75rem',
+  },
+  profileItem: {
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    borderRadius: '10px',
+    padding: '0.65rem 0.85rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem',
+  },
+  profileItemLabel: {
+    fontSize: '0.72rem',
+    color: '#94a3b8',
+    fontWeight: 700,
+  },
+  profileItemVal: {
+    fontSize: '0.88rem',
+    color: '#ffffff',
+    fontWeight: 800,
+    wordBreak: 'break-word',
   },
   editDetailsBtn: {
     background: 'rgba(255, 255, 255, 0.08)',
@@ -871,15 +936,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.78rem',
     fontWeight: 700,
     cursor: 'pointer',
-  },
-  profileChip: {
-    fontSize: '0.78rem',
-    color: '#e2e8f0',
-    background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    padding: '0.28rem 0.65rem',
-    borderRadius: '8px',
-    fontWeight: 600,
   },
   schedulePassBox: {
     background: 'rgba(37, 99, 235, 0.12)',
@@ -936,14 +992,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.65rem 0.95rem',
     borderRadius: '10px',
     border: '1px solid rgba(96, 165, 250, 0.3)',
-  },
-  pendingScheduleBox: {
-    background: 'rgba(245, 158, 11, 0.1)',
-    border: '1.5px solid rgba(245, 158, 11, 0.35)',
-    borderRadius: '18px',
-    padding: '1.4rem',
-    textAlign: 'center',
-    marginBottom: '2rem',
   },
   teamRosterBox: {
     background: 'rgba(255, 255, 255, 0.03)',
