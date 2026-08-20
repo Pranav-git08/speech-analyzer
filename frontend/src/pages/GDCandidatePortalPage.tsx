@@ -12,6 +12,7 @@ export const GDCandidatePortalPage: React.FC = () => {
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [address, setAddress] = useState('');
   const [profession, setProfession] = useState('Student / Final Year');
   const [customProfession, setCustomProfession] = useState('');
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
@@ -30,6 +31,7 @@ export const GDCandidatePortalPage: React.FC = () => {
       if (c && cand) {
         setCohort(c);
         setCandidate(cand);
+        if (cand.address) setAddress(cand.address);
         setIsFormSubmitted(true);
       }
     }
@@ -51,6 +53,10 @@ export const GDCandidatePortalPage: React.FC = () => {
       setFormError('Please enter your phone number.');
       return;
     }
+    if (!address.trim()) {
+      setFormError('Please enter your address / city.');
+      return;
+    }
 
     const finalProfession = profession === 'Other' ? (customProfession || 'Other') : profession;
 
@@ -59,6 +65,7 @@ export const GDCandidatePortalPage: React.FC = () => {
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
+      address: address.trim(),
       aptitudeScore: 12, // Default qualified score
       aptitudeTotal: 15,
       preferredTrack: currentUser?.preferredTrack || 'TJI',
@@ -182,6 +189,21 @@ export const GDCandidatePortalPage: React.FC = () => {
                   placeholder="e.g. +1 (555) 019-2834"
                   required
                   style={styles.textInput}
+                />
+              </div>
+
+              {/* Residential Address / City */}
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>
+                  Candidate Address / City <span style={{ color: '#f87171' }}>*</span>
+                </label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="e.g. 142 Tech Innovation Blvd, Apt 4B, Seattle, WA 98101"
+                  required
+                  rows={2}
+                  style={{ ...styles.textInput, resize: 'vertical' }}
                 />
               </div>
 
@@ -312,12 +334,22 @@ export const GDCandidatePortalPage: React.FC = () => {
                   <p style={styles.teamDesc}>
                     You have been placed into this 5-candidate professional discussion group based on your verified aptitude performance.
                   </p>
-                  <div style={{ marginTop: '0.75rem' }}>
+                  
+                  {/* Verified Candidate Profile Bar */}
+                  <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1rem' }}>
+                    <span style={styles.profileChip}>👤 {candidate?.fullName || fullName}</span>
+                    <span style={styles.profileChip}>📧 {candidate?.email || email}</span>
+                    <span style={styles.profileChip}>📱 {candidate?.phone || phone}</span>
+                    {candidate?.address && <span style={styles.profileChip}>📍 {candidate.address}</span>}
+                    <span style={styles.profileChip}>💼 {candidate?.targetRole || profession}</span>
+                  </div>
+
+                  <div style={{ marginTop: '0.85rem' }}>
                     <button
                       onClick={() => setIsFormSubmitted(false)}
                       style={styles.editDetailsBtn}
                     >
-                      ✏️ Edit My Contact / Profession Details
+                      ✏️ Edit My Contact, Address &amp; Profession
                     </button>
                   </div>
                 </div>
@@ -644,6 +676,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.78rem',
     fontWeight: 700,
     cursor: 'pointer',
+  },
+  profileChip: {
+    fontSize: '0.78rem',
+    color: '#e2e8f0',
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    padding: '0.28rem 0.65rem',
+    borderRadius: '8px',
+    fontWeight: 600,
   },
   schedulePassBox: {
     background: 'rgba(37, 99, 235, 0.12)',

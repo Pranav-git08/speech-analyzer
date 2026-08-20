@@ -11,6 +11,7 @@ export interface GDCandidateMember {
   aptitudeTotal: number;
   preferredTrack: 'TJI' | 'NTJI';
   targetRole?: string;
+  address?: string;
   gdStatus: 'qualified_for_gd' | 'invited' | 'approved' | 'rejected';
   uniqueInterviewCode?: string; // e.g. "VOXIS-TJI-9842" when approved
   adminNotes?: string;
@@ -145,6 +146,7 @@ export function enrollCandidateInGD(candidate: {
   aptitudeTotal: number;
   preferredTrack?: 'TJI' | 'NTJI';
   targetRole?: string;
+  address?: string;
 }): { cohortId: string; teamName: string } {
   const cohorts = getGDCohorts();
   const normalizedEmail = candidate.email.toLowerCase().trim();
@@ -153,6 +155,10 @@ export function enrollCandidateInGD(candidate: {
   for (const c of cohorts) {
     const found = c.candidates.find((m) => m.email.toLowerCase().trim() === normalizedEmail);
     if (found) {
+      if (candidate.address) found.address = candidate.address;
+      if (candidate.targetRole) found.targetRole = candidate.targetRole;
+      if (candidate.phone) found.phone = candidate.phone;
+      saveGDCohorts(cohorts);
       return { cohortId: c.id, teamName: c.teamName };
     }
   }
@@ -166,6 +172,7 @@ export function enrollCandidateInGD(candidate: {
     aptitudeTotal: candidate.aptitudeTotal || 15,
     preferredTrack: candidate.preferredTrack || 'TJI',
     targetRole: candidate.targetRole || 'Software Engineer',
+    address: candidate.address || '',
     gdStatus: 'qualified_for_gd',
   };
 
