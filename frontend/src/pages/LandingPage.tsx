@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../components/GlassCanvas3D';
 import IOSNavbar from '../components/IOSNavbar';
-import AIAgentChat from '../components/AIAgentChat';
+import InteractiveRoadmapCanvas from '../components/InteractiveRoadmapCanvas';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ export const LandingPage: React.FC = () => {
           and <strong>real-time acoustic vocal speech analysis</strong> for global MNCs and elite colleges.
         </p>
 
-        {/* SINGLE HERO ENTRY POINT CTA (As requested) */}
+        {/* SINGLE HERO ENTRY POINT CTA */}
         <div style={styles.singleCtaWrapper}>
           <button
             onClick={() => navigate('/register')}
@@ -107,87 +107,18 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 5-Stage Recruitment Pipeline Interactive Visualizer */}
+      {/* 5-Stage Recruitment Pipeline Interactive Visualizer with Canvas Beam */}
       <section style={styles.pipelineSection}>
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionPill}>ROADMAP</span>
-          <h2 style={styles.sectionTitle}>The 5-Stage Autonomous Assessment Pipeline</h2>
+          <span style={styles.sectionPill}>INTERACTIVE ROADMAP</span>
+          <h2 style={styles.sectionTitle}>5-Stage Autonomous Assessment Pathway</h2>
           <p style={styles.sectionDesc}>
-            Every candidate journeys through a structured, objective, and rigorously proctored hiring funnel:
+            Explore the holographic candidate journey. Select any stage station below or let the energy beam guide you through the process:
           </p>
         </div>
 
-        <div style={styles.stagesGrid}>
-          {/* Stage 0 */}
-          <div style={styles.stageCard} onClick={() => navigate('/register')}>
-            <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>00</div>
-            <div style={styles.stageIcon}>📝</div>
-            <h3 style={styles.stageCardTitle}>Candidate Registration</h3>
-            <p style={styles.stageCardText}>
-              Unique email constraint, real-time password strength meter, and instant 6-digit Email OTP verification.
-            </p>
-            <div style={styles.stageFeatureList}>
-              <span>✓ 6-Digit Email OTP</span>
-              <span>✓ Step-by-Step Back Navigation</span>
-            </div>
-          </div>
-
-          {/* Stage 1 */}
-          <div style={styles.stageCard} onClick={() => navigate('/register')}>
-            <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>01</div>
-            <div style={styles.stageIcon}>🧠</div>
-            <h3 style={styles.stageCardTitle}>Anti-Cheat Aptitude</h3>
-            <p style={styles.stageCardText}>
-              30-minute timed exam with 15 adaptive questions (Math, Time/Money/Relations, English Verbal) with strict 7/15 cutoff.
-            </p>
-            <div style={styles.stageFeatureList}>
-              <span>✓ Tab-Switch Auto Disqualification</span>
-              <span>✓ ≥ 7/15 Passing Cutoff</span>
-            </div>
-          </div>
-
-          {/* Stage 2 */}
-          <div style={styles.stageCard} onClick={() => navigate('/register')}>
-            <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #ec4899, #be185d)' }}>02</div>
-            <div style={styles.stageIcon}>🛡️</div>
-            <h3 style={styles.stageCardTitle}>5-Member GD Cohorts</h3>
-            <p style={styles.stageCardText}>
-              AI clusters qualified candidates into distinguished teams (*Quantum Synergy*, *Nexus Vanguard*) with admin scheduling &amp; approval codes.
-            </p>
-            <div style={styles.stageFeatureList}>
-              <span>✓ Official Email Venue Dispatch</span>
-              <span>✓ Motivational Feedback on Rejection</span>
-            </div>
-          </div>
-
-          {/* Stage 3 */}
-          <div style={styles.stageCard} onClick={() => navigate('/register')}>
-            <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #f59e0b, #b45309)' }}>03</div>
-            <div style={styles.stageIcon}>🔑</div>
-            <h3 style={styles.stageCardTitle}>Universal Access Token</h3>
-            <p style={styles.stageCardText}>
-              Approved candidates use their `VOXIS-INT-XXXX` code to freely choose between Technical (TJI) and Non-Technical (NTJI) tracks.
-            </p>
-            <div style={styles.stageFeatureList}>
-              <span>✓ Flexible Track Choice</span>
-              <span>✓ Instant Candidate Portal Entry</span>
-            </div>
-          </div>
-
-          {/* Stage 4 */}
-          <div style={styles.stageCard} onClick={() => navigate('/register')}>
-            <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #10b981, #047857)' }}>04</div>
-            <div style={styles.stageIcon}>🎙️</div>
-            <h3 style={styles.stageCardTitle}>TJI &amp; NTJI AI Interview</h3>
-            <p style={styles.stageCardText}>
-              English-only Technical &amp; Non-Technical interviews with live speech-to-text, pitch telemetry, and facial eye-contact proctoring.
-            </p>
-            <div style={styles.stageFeatureList}>
-              <span>✓ Acoustic Voice Stability</span>
-              <span>✓ AI Answer Evaluation &amp; SWOT</span>
-            </div>
-          </div>
-        </div>
+        {/* Animated Canvas Holographic Pathway Component */}
+        <InteractiveRoadmapCanvas />
       </section>
 
       {/* Global MNC Standards & Market Fit Section */}
@@ -225,9 +156,6 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* Floating AI Agent Copilot */}
-      <AIAgentChat />
     </div>
   );
 };
@@ -446,62 +374,12 @@ const styles: Record<string, React.CSSProperties> = {
   sectionDesc: {
     fontSize: '0.95rem',
     color: '#94a3b8',
-    maxWidth: '620px',
+    maxWidth: '680px',
     margin: '0 auto',
-  },
-  stagesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '1.25rem',
-  },
-  stageCard: {
-    background: 'rgba(15, 23, 42, 0.75)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '22px',
-    padding: '1.6rem 1.4rem',
-    position: 'relative',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.4)',
-  },
-  stageNumberBadge: {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    fontSize: '0.74rem',
-    fontWeight: 900,
-    color: '#ffffff',
-    padding: '0.15rem 0.5rem',
-    borderRadius: '6px',
-  },
-  stageIcon: {
-    fontSize: '2.2rem',
-    marginBottom: '0.75rem',
-  },
-  stageCardTitle: {
-    fontSize: '1.1rem',
-    fontWeight: 900,
-    color: '#ffffff',
-    margin: '0 0 0.5rem 0',
-  },
-  stageCardText: {
-    fontSize: '0.82rem',
-    color: '#cbd5e1',
-    lineHeight: 1.5,
-    margin: '0 0 1rem 0',
-  },
-  stageFeatureList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.3rem',
-    fontSize: '0.75rem',
-    color: '#60a5fa',
-    fontWeight: 700,
   },
   marketSection: {
     maxWidth: '1280px',
-    margin: '2rem auto',
+    margin: '3rem auto 2rem auto',
     padding: '0 1.5rem',
   },
   marketCard: {
