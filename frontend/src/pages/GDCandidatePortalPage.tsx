@@ -14,7 +14,6 @@ export const GDCandidatePortalPage: React.FC = () => {
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [address, setAddress] = useState('');
   const [profession, setProfession] = useState('Student / Final Year');
-  const [customProfession, setCustomProfession] = useState('');
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
   // GD Cohort & Candidate status
@@ -59,7 +58,7 @@ export const GDCandidatePortalPage: React.FC = () => {
       return;
     }
 
-    const finalProfession = profession === 'Other' ? (customProfession || 'Other') : profession;
+    const finalProfession = profession.trim();
 
     // Get aptitude score if recorded
     let aptScore = 12;
@@ -220,32 +219,53 @@ export const GDCandidatePortalPage: React.FC = () => {
                 <label style={styles.inputLabel}>
                   Current Working / Profession <span style={{ color: '#f87171' }}>*</span>
                 </label>
-                <select
+
+                {/* Quick Selection Preset Badges */}
+                <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.45rem' }}>
+                  {[
+                    '🎓 Student / Final Year',
+                    '💻 Software Engineer / Tech',
+                    '📊 Business / Data Analyst',
+                    '🚀 Fresher / Job Seeker',
+                    '💼 Working Professional',
+                  ].map((preset) => {
+                    const cleanName = preset.replace(/^[^\s]+\s/, '');
+                    const isSelected = profession.toLowerCase().includes(cleanName.toLowerCase().split('/')[0].trim());
+                    return (
+                      <button
+                        type="button"
+                        key={preset}
+                        onClick={() => setProfession(cleanName)}
+                        style={{
+                          background: isSelected ? 'rgba(96, 165, 250, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                          border: isSelected ? '1.5px solid #60a5fa' : '1px solid rgba(255, 255, 255, 0.12)',
+                          color: isSelected ? '#ffffff' : '#cbd5e1',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {preset}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <input
+                  type="text"
                   value={profession}
                   onChange={(e) => setProfession(e.target.value)}
-                  style={styles.selectInput}
-                >
-                  <option value="Student / Final Year">🎓 Student / Final Year Undergrad</option>
-                  <option value="Postgraduate / Master's Student">📚 Postgraduate / Master's Student</option>
-                  <option value="Working Professional (Software / Tech)">💻 Working Professional (Software / Tech)</option>
-                  <option value="Working Professional (Business / Non-Tech)">📊 Working Professional (Business / Non-Tech)</option>
-                  <option value="Fresher / Active Job Seeker">🚀 Fresher / Active Job Seeker</option>
-                  <option value="Other">💼 Other (Specify below)</option>
-                </select>
+                  placeholder="e.g. Student / B.Tech CSE, Software Engineer, Frontend Developer, etc."
+                  required
+                  style={styles.textInput}
+                />
+                <span style={styles.inputHint}>
+                  Click a quick preset above or type your exact role / college branch.
+                </span>
               </div>
-
-              {profession === 'Other' && (
-                <div style={styles.inputGroup}>
-                  <label style={styles.inputLabel}>Specify Current Profession / Role</label>
-                  <input
-                    type="text"
-                    value={customProfession}
-                    onChange={(e) => setCustomProfession(e.target.value)}
-                    placeholder="e.g. Freelance Consultant / Data Analyst"
-                    style={styles.textInput}
-                  />
-                </div>
-              )}
 
               {/* Submit CTA */}
               <button
