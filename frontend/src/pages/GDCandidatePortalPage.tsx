@@ -63,16 +63,16 @@ export const GDCandidatePortalPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Initial Load: Pre-fill candidate information
+  // Initial Load: Pre-fill candidate information once on component mount
   useEffect(() => {
-    const activeEmail = email || currentUser?.email;
+    const activeEmail = currentUser?.email;
     if (activeEmail) {
       const { candidate: cand } = getCandidateGDInfo(activeEmail);
       if (cand) {
-        if (cand.fullName && !fullName) setFullName(cand.fullName);
-        if (cand.email && !email) setEmail(cand.email);
-        if (cand.phone && !phone) setPhone(cand.phone);
-        if (cand.address && !address) setAddress(cand.address);
+        if (cand.fullName) setFullName(cand.fullName);
+        if (cand.email) setEmail(cand.email);
+        if (cand.phone) setPhone(cand.phone);
+        if (cand.address) setAddress(cand.address);
         if (cand.preferredTrack) setPreferredTrack(cand.preferredTrack);
         if (cand.targetRole) {
           const match = PROFESSION_OPTIONS.find((p) => p.label.toLowerCase() === cand.targetRole?.toLowerCase());
@@ -85,7 +85,7 @@ export const GDCandidatePortalPage: React.FC = () => {
         }
       }
     }
-  }, [currentUser]);
+  }, []);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +193,7 @@ export const GDCandidatePortalPage: React.FC = () => {
               <span style={styles.formPill}>STAGE 02 INTAKE</span>
               <h1 style={styles.formTitle}>Group Discussion (GD) Profile Verification</h1>
               <p style={styles.formSubtitle}>
-                Congratulations on clearing the Aptitude Round! Please verify your contact details, address, and choose your current working profession to join your 5-member GD cohort.
+                Congratulations on clearing the Aptitude Round! Please verify your contact details, residential address, and select your current working profession to join your 5-member GD cohort.
               </p>
             </div>
 
@@ -267,14 +267,14 @@ export const GDCandidatePortalPage: React.FC = () => {
                 />
               </div>
 
-              {/* Current Working / Profession Single-Select Radio Cards */}
+              {/* Current Working / Profession Clickable Option Cards */}
               <div style={styles.inputGroup}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label style={styles.inputLabel}>
                     Current Working / Profession <span style={{ color: '#f87171' }}>*</span>
                   </label>
                   <span style={{ fontSize: '0.75rem', color: '#93c5fd', fontWeight: 750 }}>
-                    (Select 1 Option Only)
+                    (Select 1 Option)
                   </span>
                 </div>
 
@@ -282,27 +282,18 @@ export const GDCandidatePortalPage: React.FC = () => {
                   {PROFESSION_OPTIONS.map((opt) => {
                     const isSelected = selectedProfessionId === opt.id;
                     return (
-                      <label
+                      <button
+                        type="button"
                         key={opt.id}
+                        onClick={() => setSelectedProfessionId(opt.id)}
                         style={{
-                          ...styles.optionCard,
+                          ...styles.optionCardBtn,
                           borderColor: isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.12)',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.22)' : 'rgba(255, 255, 255, 0.04)',
-                          boxShadow: isSelected ? '0 0 20px rgba(59, 130, 246, 0.35)' : 'none',
-                          cursor: 'pointer',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.28)' : 'rgba(255, 255, 255, 0.04)',
+                          boxShadow: isSelected ? '0 0 20px rgba(59, 130, 246, 0.4)' : 'none',
                         }}
                       >
-                        {/* Hidden Native Radio Input ensuring strict single-select */}
-                        <input
-                          type="radio"
-                          name="candidate_profession_radio"
-                          value={opt.id}
-                          checked={isSelected}
-                          onChange={() => setSelectedProfessionId(opt.id)}
-                          style={{ display: 'none' }}
-                        />
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', textAlign: 'left' }}>
                           <span style={{ fontSize: '1.4rem' }}>{opt.icon}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ ...styles.optionLabel, color: isSelected ? '#ffffff' : '#e2e8f0' }}>
@@ -311,7 +302,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                             <div style={styles.optionDesc}>{opt.desc}</div>
                           </div>
 
-                          {/* Custom Radio Ring */}
+                          {/* Radio Ring */}
                           <div
                             style={{
                               ...styles.radioIndicator,
@@ -322,7 +313,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                             {isSelected && <div style={styles.radioInnerDot} />}
                           </div>
                         </div>
-                      </label>
+                      </button>
                     );
                   })}
                 </div>
@@ -349,29 +340,22 @@ export const GDCandidatePortalPage: React.FC = () => {
                     Preferred Interview Track <span style={{ color: '#f87171' }}>*</span>
                   </label>
                   <span style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 750 }}>
-                    (Select 1 Track Only)
+                    (Select 1 Track)
                   </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => setPreferredTrack('TJI')}
                     style={{
-                      ...styles.optionCard,
+                      ...styles.optionCardBtn,
                       borderColor: preferredTrack === 'TJI' ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)',
-                      background: preferredTrack === 'TJI' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(255, 255, 255, 0.04)',
-                      boxShadow: preferredTrack === 'TJI' ? '0 0 20px rgba(59, 130, 246, 0.35)' : 'none',
-                      cursor: 'pointer',
+                      background: preferredTrack === 'TJI' ? 'rgba(37, 99, 235, 0.28)' : 'rgba(255, 255, 255, 0.04)',
+                      boxShadow: preferredTrack === 'TJI' ? '0 0 20px rgba(59, 130, 246, 0.4)' : 'none',
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="candidate_track_radio"
-                      value="TJI"
-                      checked={preferredTrack === 'TJI'}
-                      onChange={() => setPreferredTrack('TJI')}
-                      style={{ display: 'none' }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', width: '100%', textAlign: 'left' }}>
                       <span style={{ fontSize: '1.4rem' }}>💻</span>
                       <div style={{ flex: 1 }}>
                         <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>TJI (Technical Track)</strong>
@@ -387,26 +371,19 @@ export const GDCandidatePortalPage: React.FC = () => {
                         {preferredTrack === 'TJI' && <div style={styles.radioInnerDot} />}
                       </div>
                     </div>
-                  </label>
+                  </button>
 
-                  <label
+                  <button
+                    type="button"
+                    onClick={() => setPreferredTrack('NTJI')}
                     style={{
-                      ...styles.optionCard,
+                      ...styles.optionCardBtn,
                       borderColor: preferredTrack === 'NTJI' ? '#a855f7' : 'rgba(255, 255, 255, 0.12)',
-                      background: preferredTrack === 'NTJI' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.04)',
-                      boxShadow: preferredTrack === 'NTJI' ? '0 0 20px rgba(168, 85, 247, 0.35)' : 'none',
-                      cursor: 'pointer',
+                      background: preferredTrack === 'NTJI' ? 'rgba(168, 85, 247, 0.28)' : 'rgba(255, 255, 255, 0.04)',
+                      boxShadow: preferredTrack === 'NTJI' ? '0 0 20px rgba(168, 85, 247, 0.4)' : 'none',
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="candidate_track_radio"
-                      value="NTJI"
-                      checked={preferredTrack === 'NTJI'}
-                      onChange={() => setPreferredTrack('NTJI')}
-                      style={{ display: 'none' }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', width: '100%', textAlign: 'left' }}>
                       <span style={{ fontSize: '1.4rem' }}>📊</span>
                       <div style={{ flex: 1 }}>
                         <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>NTJI (Non-Technical Track)</strong>
@@ -422,7 +399,7 @@ export const GDCandidatePortalPage: React.FC = () => {
                         {preferredTrack === 'NTJI' && <div style={styles.radioInnerDot} />}
                       </div>
                     </div>
-                  </label>
+                  </button>
                 </div>
               </div>
 
@@ -798,13 +775,16 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '0.75rem',
   },
-  optionCard: {
-    border: '1px solid',
+  optionCardBtn: {
+    border: '1.5px solid',
     borderRadius: '14px',
-    padding: '0.9rem 1rem',
+    padding: '0.95rem 1rem',
     display: 'flex',
     alignItems: 'center',
-    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+    cursor: 'pointer',
+    width: '100%',
+    transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+    outline: 'none',
   },
   optionLabel: {
     fontSize: '0.88rem',
@@ -817,8 +797,8 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.35,
   },
   radioIndicator: {
-    width: '18px',
-    height: '18px',
+    width: '20px',
+    height: '20px',
     borderRadius: '50%',
     border: '2px solid',
     display: 'flex',
@@ -827,8 +807,8 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   radioInnerDot: {
-    width: '6px',
-    height: '6px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
     background: '#ffffff',
   },
