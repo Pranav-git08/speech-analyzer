@@ -61,58 +61,25 @@ export const LandingPage: React.FC = () => {
           and <strong>real-time acoustic vocal speech analysis</strong> for global MNCs and elite colleges.
         </p>
 
-        {/* Call-to-Action Action Hub Grid */}
-        <div style={styles.ctaGrid}>
+        {/* SINGLE HERO ENTRY POINT CTA (As requested) */}
+        <div style={styles.singleCtaWrapper}>
           <button
             onClick={() => navigate('/register')}
-            style={styles.primaryCta}
-            title="Start new candidate registration & email verification"
+            style={styles.mainHeroCta}
+            title="Launch candidate portal - Register, Sign In, or Enter Unique GD Code"
           >
-            <span style={{ fontSize: '1.25rem' }}>🚀</span>
-            <div>
-              <div style={styles.ctaTitle}>Begin Candidate Journey</div>
-              <div style={styles.ctaSub}>Register with Email OTP & Start Aptitude</div>
+            <div style={styles.ctaIconBox}>
+              <span style={{ fontSize: '2rem' }}>🚀</span>
             </div>
-            <span style={styles.ctaArrow}>➔</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/login')}
-            style={styles.secondaryCta}
-            title="Sign in with credentials or enter your unique GD interview code"
-          >
-            <span style={{ fontSize: '1.25rem' }}>🎟️</span>
-            <div>
-              <div style={styles.ctaTitle}>Enter Unique GD Code</div>
-              <div style={styles.ctaSub}>Universal Access for TJI & NTJI Tracks</div>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <div style={styles.heroCtaTitle}>Begin Candidate Journey</div>
+              <div style={styles.heroCtaSub}>
+                Register with Email OTP &amp; Start Aptitude Round / Sign In with GD Code
+              </div>
             </div>
-            <span style={styles.ctaArrow}>➔</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/admin/gd')}
-            style={styles.adminCta}
-            title="Access the Admin GD Console & Candidate Roster"
-          >
-            <span style={{ fontSize: '1.25rem' }}>🛡️</span>
-            <div>
-              <div style={styles.ctaTitle}>Admin GD Console</div>
-              <div style={styles.ctaSub}>5-Member Cohorts, Schedules & Approvals</div>
+            <div style={styles.ctaArrowCircle}>
+              ➔
             </div>
-            <span style={styles.ctaArrow}>➔</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/test-mic')}
-            style={styles.micCta}
-            title="Calibrate your microphone and run hardware diagnostics"
-          >
-            <span style={{ fontSize: '1.25rem' }}>🎙️</span>
-            <div>
-              <div style={styles.ctaTitle}>Microphone & Audio Check</div>
-              <div style={styles.ctaSub}>Real-Time Pitch & Waveform Diagnostics</div>
-            </div>
-            <span style={styles.ctaArrow}>➔</span>
           </button>
         </div>
 
@@ -180,12 +147,12 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Stage 2 */}
-          <div style={styles.stageCard} onClick={() => navigate('/admin/gd')}>
+          <div style={styles.stageCard} onClick={() => navigate('/register')}>
             <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #ec4899, #be185d)' }}>02</div>
             <div style={styles.stageIcon}>🛡️</div>
             <h3 style={styles.stageCardTitle}>5-Member GD Cohorts</h3>
             <p style={styles.stageCardText}>
-              AI clusters qualified candidates into distinguished teams (*Quantum Synergy*, *Nexus Vanguard*) with admin scheduling & approval codes.
+              AI clusters qualified candidates into distinguished teams (*Quantum Synergy*, *Nexus Vanguard*) with admin scheduling &amp; approval codes.
             </p>
             <div style={styles.stageFeatureList}>
               <span>✓ Official Email Venue Dispatch</span>
@@ -194,7 +161,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Stage 3 */}
-          <div style={styles.stageCard} onClick={() => navigate('/login')}>
+          <div style={styles.stageCard} onClick={() => navigate('/register')}>
             <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #f59e0b, #b45309)' }}>03</div>
             <div style={styles.stageIcon}>🔑</div>
             <h3 style={styles.stageCardTitle}>Universal Access Token</h3>
@@ -208,16 +175,16 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Stage 4 */}
-          <div style={styles.stageCard} onClick={() => navigate('/login/tji')}>
+          <div style={styles.stageCard} onClick={() => navigate('/register')}>
             <div style={{ ...styles.stageNumberBadge, background: 'linear-gradient(135deg, #10b981, #047857)' }}>04</div>
             <div style={styles.stageIcon}>🎙️</div>
-            <h3 style={styles.stageCardTitle}>TJI & NTJI AI Interview</h3>
+            <h3 style={styles.stageCardTitle}>TJI &amp; NTJI AI Interview</h3>
             <p style={styles.stageCardText}>
-              English-only Technical & Non-Technical interviews with live speech-to-text, pitch telemetry, and facial eye-contact proctoring.
+              English-only Technical &amp; Non-Technical interviews with live speech-to-text, pitch telemetry, and facial eye-contact proctoring.
             </p>
             <div style={styles.stageFeatureList}>
               <span>✓ Acoustic Voice Stability</span>
-              <span>✓ AI Answer Evaluation & SWOT</span>
+              <span>✓ AI Answer Evaluation &amp; SWOT</span>
             </div>
           </div>
         </div>
@@ -229,7 +196,7 @@ export const LandingPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <span style={{ fontSize: '2rem' }}>🏢</span>
             <div>
-              <h3 style={styles.marketTitle}>Engineered for Global MNC & University Standards</h3>
+              <h3 style={styles.marketTitle}>Engineered for Global MNC &amp; University Standards</h3>
               <p style={styles.marketSub}>FAANG/MAANG, Fortune 500 Consulting, and Premier Engineering Colleges</p>
             </div>
           </div>
@@ -243,9 +210,9 @@ export const LandingPage: React.FC = () => {
             </div>
 
             <div style={styles.marketPillar}>
-              <div style={styles.pillarTitle}>📊 Global Consulting & Big 4</div>
+              <div style={styles.pillarTitle}>📊 Global Consulting &amp; Big 4</div>
               <p style={styles.pillarText}>
-                Assessing structured communication via STAR & PESTEL frameworks, client readiness, and executive poise during GD rounds.
+                Assessing structured communication via STAR &amp; PESTEL frameworks, client readiness, and executive poise during GD rounds.
               </p>
             </div>
 
@@ -354,87 +321,65 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 auto 2.75rem auto',
     fontWeight: 400,
   },
-  ctaGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '1.25rem',
+  singleCtaWrapper: {
     width: '100%',
-    maxWidth: '1100px',
+    maxWidth: '560px',
     marginBottom: '3.5rem',
+    display: 'flex',
+    justifyContent: 'center',
   },
-  primaryCta: {
-    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+  mainHeroCta: {
+    width: '100%',
+    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #6366f1 100%)',
+    border: '1.5px solid rgba(255, 255, 255, 0.4)',
+    borderRadius: '24px',
+    padding: '1.4rem 1.75rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.25rem',
+    cursor: 'pointer',
+    color: '#ffffff',
+    boxShadow: '0 20px 50px rgba(37, 99, 235, 0.5), 0 0 35px rgba(124, 58, 237, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.5)',
+    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  ctaIconBox: {
+    width: '54px',
+    height: '54px',
+    borderRadius: '16px',
+    background: 'rgba(255, 255, 255, 0.15)',
     border: '1px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: '20px',
-    padding: '1.25rem 1.4rem',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.85rem',
-    cursor: 'pointer',
-    color: '#ffffff',
-    textAlign: 'left',
-    boxShadow: '0 15px 35px rgba(37, 99, 235, 0.4), 0 0 25px rgba(124, 58, 237, 0.25)',
-    transition: 'all 0.25s ease',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
   },
-  secondaryCta: {
-    background: 'rgba(15, 23, 42, 0.85)',
-    backdropFilter: 'blur(20px)',
-    border: '1.5px solid rgba(245, 158, 11, 0.4)',
-    borderRadius: '20px',
-    padding: '1.25rem 1.4rem',
+  heroCtaTitle: {
+    fontSize: '1.25rem',
+    fontWeight: 950,
+    color: '#ffffff',
+    letterSpacing: '-0.01em',
+  },
+  heroCtaSub: {
+    fontSize: '0.82rem',
+    color: '#e0e7ff',
+    marginTop: '0.25rem',
+    lineHeight: 1.4,
+  },
+  ctaArrowCircle: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '50%',
+    background: 'rgba(255, 255, 255, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.85rem',
-    cursor: 'pointer',
-    color: '#ffffff',
-    textAlign: 'left',
-    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.2)',
-    transition: 'all 0.25s ease',
-  },
-  adminCta: {
-    background: 'rgba(15, 23, 42, 0.85)',
-    backdropFilter: 'blur(20px)',
-    border: '1.5px solid rgba(239, 68, 68, 0.4)',
-    borderRadius: '20px',
-    padding: '1.25rem 1.4rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.85rem',
-    cursor: 'pointer',
-    color: '#ffffff',
-    textAlign: 'left',
-    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(239, 68, 68, 0.2)',
-    transition: 'all 0.25s ease',
-  },
-  micCta: {
-    background: 'rgba(15, 23, 42, 0.85)',
-    backdropFilter: 'blur(20px)',
-    border: '1.5px solid rgba(16, 185, 129, 0.4)',
-    borderRadius: '20px',
-    padding: '1.25rem 1.4rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.85rem',
-    cursor: 'pointer',
-    color: '#ffffff',
-    textAlign: 'left',
-    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.2)',
-    transition: 'all 0.25s ease',
-  },
-  ctaTitle: {
-    fontSize: '0.96rem',
-    fontWeight: 900,
-    color: '#ffffff',
-  },
-  ctaSub: {
-    fontSize: '0.74rem',
-    color: '#cbd5e1',
-    marginTop: '0.15rem',
-  },
-  ctaArrow: {
-    marginLeft: 'auto',
+    justifyContent: 'center',
     fontSize: '1.1rem',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#ffffff',
+    flexShrink: 0,
   },
   metricsBar: {
     display: 'flex',
