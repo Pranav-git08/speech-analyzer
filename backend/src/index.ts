@@ -15,6 +15,7 @@ import gdRoundRouter from './routes/gdRound';
 import adminRouter from './routes/admin';
 
 import agentRouter from './routes/agent';
+import emailRouter from './routes/email';
 
 import path from 'path';
 import fs from 'fs';
@@ -169,6 +170,7 @@ app.use('/api/gd-round', gdRoundRouter);
 // Admin routes
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/agent', agentRouter);
+app.use('/api/email', emailRouter);
 
 async function reconcileCandidateHRCodes() {
   try {
