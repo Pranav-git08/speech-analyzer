@@ -96,7 +96,7 @@ export const RegisterPage: React.FC = () => {
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
-  // Step 1: Send OTP to candidate's Email & Phone
+  // Step 1: Register Candidate (Bypassing OTP)
   const handleInitiateOTP = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -131,44 +131,8 @@ export const RegisterPage: React.FC = () => {
     }
 
     setSubmitting(true);
-    const otp = sendRegistrationOTP(email, phone);
-    sendOtpEmail(email, fullName, otp);
-
-    setResendTimer(60);
-    setEnteredOTP('');
-    setOtpError('');
-    setSubmitting(false);
-    setRegStep('otp');
-  };
-
-  // Step 2: Resend OTP
-  const handleResendOTP = () => {
-    if (resendTimer > 0) return;
-    const otp = sendRegistrationOTP(email, phone);
-    sendOtpEmail(email, fullName, otp);
-    setResendTimer(60);
-    setOtpError('');
-  };
-
-  // Step 3: Verify OTP and finalize Registration
-  const handleVerifyOTP = (e: React.FormEvent) => {
-    e.preventDefault();
-    setOtpError('');
-
-    if (!enteredOTP.trim() || enteredOTP.trim().length !== 6) {
-      setOtpError('Please enter the complete 6-digit verification code sent to your email.');
-      return;
-    }
-
-    setSubmitting(true);
-    const verification = verifyRegistrationOTP(email, enteredOTP);
-
-    if (!verification.valid) {
-      setSubmitting(false);
-      setOtpError(verification.error || 'Invalid OTP code. Please check your email inbox.');
-      return;
-    }
-
+    
+    // Bypass OTP, directly register candidate
     const result = registerCandidate({
       fullName,
       email,
@@ -179,12 +143,15 @@ export const RegisterPage: React.FC = () => {
     setSubmitting(false);
 
     if (!result.success) {
-      setOtpError(result.error || 'Registration failed.');
+      setFormError(result.error || 'Registration failed.');
       return;
     }
 
     setRegStep('success');
   };
+
+  const handleResendOTP = () => {};
+  const handleVerifyOTP = (e: React.FormEvent) => { e.preventDefault(); };
 
   // Intelligent Sign In Handler
   const handleSignInSubmit = (e: React.FormEvent) => {
