@@ -317,18 +317,13 @@ export async function sendEmail(
 
   if (isSmtpReal) {
     try {
-      const isGmail = smtpUser.includes('@gmail.com') || process.env.SMTP_SERVICE === 'gmail';
-      const transporter = isGmail
-        ? nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
-          })
-        : nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: parseInt(process.env.SMTP_PORT || '587', 10),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: { user: smtpUser, pass: smtpPass },
-          });
+        // Force host configuration instead of "service: gmail" to bypass IPv6 ENETUNREACH on Render
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: parseInt(process.env.SMTP_PORT || '465', 10),
+          secure: true,
+          auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
+        });
 
       const fromAddress = config.sendgrid.fromEmail && !config.sendgrid.fromEmail.includes('example.com')
         ? config.sendgrid.fromEmail
