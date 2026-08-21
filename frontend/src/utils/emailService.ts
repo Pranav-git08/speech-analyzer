@@ -9,13 +9,6 @@ export interface SendEmailResult {
 
 export async function sendOtpEmail(toEmail: string, candidateName: string, otpCode: string): Promise<SendEmailResult> {
   const normalizedEmail = toEmail.toLowerCase().trim();
-  const subject = `Your VOXIS.AI Verification Code: ${otpCode}`;
-  const body = `Hi ${candidateName || 'Candidate'},\n\nYour 6-digit verification OTP is: ${otpCode}\n\nPlease enter this code to verify your email address.\n\nBest,\nVOXIS AI Security`;
-
-  // Dispatch global event for the Virtual Email Inbox UI (for testing)
-  window.dispatchEvent(new CustomEvent('virtual_email', {
-    detail: { to: normalizedEmail, subject, body, type: 'otp' }
-  }));
 
   try {
     // 1. Call Backend endpoint to send actual email via Nodemailer/SendGrid
@@ -45,10 +38,6 @@ export async function sendOtpEmail(toEmail: string, candidateName: string, otpCo
 
 export async function sendAdminEmail(toEmail: string, subject: string, body: string): Promise<SendEmailResult> {
   const normalizedEmail = toEmail.toLowerCase().trim();
-  
-  window.dispatchEvent(new CustomEvent('virtual_email', {
-    detail: { to: normalizedEmail, subject, body, type: 'admin' }
-  }));
 
   try {
     const response = await fetch('/api/email/send-admin', {
