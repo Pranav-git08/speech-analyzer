@@ -480,41 +480,48 @@ const InterviewPage: React.FC = () => {
         const recorder = sessionRecorderRef.current;
         if (recorder && (recorder.state === 'recording' || recorder.state === 'paused')) {
           await new Promise<void>((resolve) => {
-            const orig = recorder.onstop;
-            recorder.onstop = (e) => {
-              if (orig) (orig as EventListener).call(recorder, e);
-              resolve();
-            };
-            recorder.requestData();
-            setTimeout(() => recorder.stop(), 200);
+            recorder.onstop = () => resolve();
+            try { recorder.requestData(); } catch {}
+            recorder.stop();
           });
         }
-
-        // 2. Finalize video stream on server if active
-        if (streamIdRef.current) {
-          await api.post('/admin/recording/stream/complete', { streamId: streamIdRef.current }, { timeout: 3000 });
-          streamIdRef.current = null;
-        if (allRecordedBlobsRef.current.length > 0) {
-          try {
-            const fullBlob = new Blob(allRecordedBlobsRef.current, { type: 'video/webm' });
-            const candId = state?.candidateId || 'cand-local';
-            saveRecordedVideo(candId, fullBlob);
-            saveRecordedVideo('rec-local-1', fullBlob);
-            saveRecordedVideo(sid, fullBlob);
-            if (streamIdRef.current) saveRecordedVideo(streamIdRef.current, fullBlob);
-            console.log('[Recording] Persisted full interview video recording to IndexedDB');
-          } catch (e) {
-            console.warn('[Recording] Could not persist to IndexedDB:', e);
-          }
-        }
-        }
-      } catch (recErr) {
-        console.warn('[Recording] Stream finalization warning:', recErr);
-      } finally {
-        setUploadingRecording(false);
+      } catch (e) {
+        console.warn('[Recording] Stop recorder warning:', e);
       }
 
-      // 3. Complete session
+      // 2. ALWAYS save recorded webcam video to local IndexedDB first
+      if (allRecordedBlobsRef.current && allRecordedBlobsRef.current.length > 0) {
+        try {
+          const fullBlob = new Blob(allRecordedBlobsRef.current, { type: 'video/webm' });
+          const candId = state?.candidateId || 'cand-local';
+          const candName = state?.resumeData?.name || '';
+          await saveRecordedVideo(candId, fullBlob);
+          await saveRecordedVideo(`cand-${candId}`, fullBlob);
+          await saveRecordedVideo(`rec-${candId}`, fullBlob);
+          await saveRecordedVideo('latest_interview_recording', fullBlob);
+          await saveRecordedVideo('rec-local-1', fullBlob);
+          await saveRecordedVideo(sid, fullBlob);
+          if (candName) {
+            await saveRecordedVideo(candName.toLowerCase().trim().replace(/\s+/g, '-'), fullBlob);
+          }
+          console.log(`[Recording] Persisted full interview video (${(fullBlob.size / (1024 * 1024)).toFixed(2)} MB) to IndexedDB`);
+        } catch (dbErr) {
+          console.warn('[Recording] IndexedDB storage error:', dbErr);
+        }
+      }
+
+      // 3. Finalize video stream on server in background if stream was established
+      if (streamIdRef.current) {
+        try {
+          await api.post('/admin/recording/stream/complete', { streamId: streamIdRef.current }, { timeout: 3000 });
+        } catch (srvErr) {
+          console.warn('[Recording] Server stream completion note:', srvErr);
+        }
+        streamIdRef.current = null;
+      }
+      setUploadingRecording(false);
+
+      // 4. Complete session and calculate score
       let finalScoreCalculated = 85;
       if (!sid.startsWith('session-local-')) {
         try {
@@ -587,13 +594,14 @@ const InterviewPage: React.FC = () => {
         gdAccessCode: compRes.gdAccessCode,
       });
 
-    } catch {
+    } catch (err) {
+      console.warn('[Interview] finishSession catch fallback:', err);
       setUploadingRecording(false);
       setStatus('completed');
       setCompletionData({
         passed: true,
         finalGrade: 88,
-        message: '🎉 Congratulations! You have successfully completed your technical interview round.',
+        message: '🎉 Congratulations! You have successfully completed your interview round.',
       });
       saveCandidateSessionToLocal({
         candidateId: state?.candidateId || `cand-${Date.now()}`,

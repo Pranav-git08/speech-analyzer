@@ -886,7 +886,7 @@ export const AdminCandidateDetailPage: React.FC = () => {
 
             {/* Exactly ONE Video Player rendered here */}
             {activeVideoUrl ? (
-              <VideoPlayer src={activeVideoUrl} label={activeVideoLabel} recordingId={activeVideoUrl} candidateId={candidate.id} />
+              <VideoPlayer src={activeVideoUrl} label={activeVideoLabel} recordingId={activeVideoUrl} candidateId={candidate.id} candidateName={candidate.name} />
             ) : (
               <div style={{ padding: '2.5rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '16px', border: '1.5px dashed #cbd5e1', color: '#cbd5e1' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📹</div>
@@ -1121,18 +1121,18 @@ export const AdminCandidateDetailPage: React.FC = () => {
 };
 
 
-// ─── SINGLE VIDEO PLAYER (Real Video In-Browser Player) ────────────────────────
+// ─── SINGLE VIDEO PLAYER (Real Candidate Webcam Video Player) ─────────────────
 
 const VideoPlayer: React.FC<{
   src?: string;
   label: string;
   recordingId?: string | null;
   candidateId?: string;
-}> = ({ src, label, recordingId, candidateId }) => {
+  candidateName?: string;
+}> = ({ src, label, recordingId, candidateId, candidateName }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = React.useState(false);
-  const [isCandidateRecording, setIsCandidateRecording] = React.useState(false);
-  const [currentSrc, setCurrentSrc] = React.useState<string>('/videos/candidate-interview-sample.mp4');
+  const [currentSrc, setCurrentSrc] = React.useState<string | null>(null);
 
   const cleanFilename = (recordingId || src || '')
     .replace(/^https?:\/\/[^/]+/, '')
@@ -1144,12 +1144,14 @@ const VideoPlayer: React.FC<{
   React.useEffect(() => {
     let isMounted = true;
 
-    async function resolveStream() {
-      // 1. Check IndexedDB for the candidate's exact recorded webcam video
+    async function resolveCandidateVideo() {
+      // 1. Search IndexedDB for the candidate's exact recorded webcam video
       const keysToTry = [
         candidateId || '',
         `cand-${candidateId}`,
         `rec-${candidateId}`,
+        candidateName ? candidateName.toLowerCase().trim().replace(/\s+/g, '-') : '',
+        'latest_interview_recording',
         recordingId || '',
         cleanFilename || '',
         'rec-local-1',
@@ -1158,37 +1160,57 @@ const VideoPlayer: React.FC<{
       try {
         const localBlobUrl = await getRecordedVideoUrl(keysToTry);
         if (localBlobUrl && isMounted) {
-          console.log('[VideoPlayer] Playing candidate live webcam recording from local storage');
+          console.log('[VideoPlayer] Found real candidate webcam recording from local storage');
           setCurrentSrc(localBlobUrl);
-          setIsCandidateRecording(true);
           return;
         }
       } catch (e) {
-        console.warn('[VideoPlayer] IndexedDB check note:', e);
+        console.warn('[VideoPlayer] IndexedDB lookup note:', e);
       }
 
-      // 2. Check if a direct web or upload URL is provided
+      // 2. Check if a direct server upload URL is provided
       if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
         if (isMounted) {
           setCurrentSrc(src);
-          setIsCandidateRecording(true);
         }
         return;
       }
 
-      // 3. Fallback to bundled high-definition candidate video
+      // 3. If no recording captured, set null
       if (isMounted) {
-        setCurrentSrc('/videos/candidate-interview-sample.mp4');
-        setIsCandidateRecording(false);
+        setCurrentSrc(null);
       }
     }
 
-    resolveStream();
+    resolveCandidateVideo();
 
     return () => {
       isMounted = false;
     };
-  }, [src, recordingId, candidateId, cleanFilename]);
+  }, [src, recordingId, candidateId, candidateName, cleanFilename]);
+
+  if (!currentSrc) {
+    return (
+      <div
+        style={{
+          padding: '2.5rem 1.5rem',
+          textAlign: 'center',
+          background: 'rgba(15, 23, 42, 0.65)',
+          borderRadius: '18px',
+          border: '1.5px dashed rgba(255, 255, 255, 0.2)',
+          color: '#cbd5e1',
+        }}
+      >
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.6rem' }}>📹</div>
+        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#ffffff', marginBottom: '0.35rem' }}>
+          No Webcam Recording Found for This Candidate
+        </div>
+        <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '480px', margin: '0 auto', lineHeight: 1.5 }}>
+          When you conduct a live interview round with your webcam on this device, your full recorded session will appear and play back directly here.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1211,18 +1233,13 @@ const VideoPlayer: React.FC<{
         controlsList="nodownload"
         style={{
           width: '100%',
-          maxHeight: '500px',
+          maxHeight: '520px',
           display: 'block',
           background: '#000000',
           borderRadius: '16px 16px 0 0',
         }}
         src={currentSrc}
         onLoadedData={() => setVideoLoaded(true)}
-        onError={() => {
-          if (currentSrc !== '/videos/candidate-interview-sample.mp4') {
-            setCurrentSrc('/videos/candidate-interview-sample.mp4');
-          }
-        }}
       >
         Your browser does not support the video element.
       </video>
@@ -1244,10 +1261,10 @@ const VideoPlayer: React.FC<{
           <span style={{ fontSize: '1.1rem' }}>📹</span>
           <div>
             <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 800 }}>
-              {label} {isCandidateRecording ? '• (Live Candidate Recording)' : ''}
+              {label} • (Actual Candidate Webcam Recording)
             </div>
             <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
-              {videoLoaded ? '● Continuous High-Definition Stream Active' : 'Connecting stream…'}
+              {videoLoaded ? '● Full Continuous Stream Ready' : 'Loading candidate recording…'}
             </div>
           </div>
         </div>
