@@ -503,14 +503,8 @@ export const GDCandidatePortalPage: React.FC = () => {
 
                 {/* Candidate Confirmed Profile Summary */}
                 <div style={styles.profileSummaryBox}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={styles.profileHeader}>
                     <strong style={{ color: '#ffffff', fontSize: '0.95rem' }}>📋 Verified Candidate Profile</strong>
-                    <button
-                      onClick={() => setIsFormSubmitted(false)}
-                      style={styles.editDetailsBtn}
-                    >
-                      ✏️ Edit My Details
-                    </button>
                   </div>
 
                   <div style={styles.profileGrid}>
@@ -519,50 +513,38 @@ export const GDCandidatePortalPage: React.FC = () => {
                       <strong style={styles.profileItemVal}>{candidate?.fullName || fullName}</strong>
                     </div>
                     <div style={styles.profileItem}>
-                      <span style={styles.profileItemLabel}>📧 Registered Email</span>
+                      <span style={styles.profileItemLabel}>✉️ Registered Email</span>
                       <strong style={styles.profileItemVal}>{candidate?.email || email}</strong>
                     </div>
                     <div style={styles.profileItem}>
-                      <span style={styles.profileItemLabel}>📱 Phone Number</span>
+                      <span style={styles.profileItemLabel}>📱 Mobile Number</span>
                       <strong style={styles.profileItemVal}>{candidate?.phone || phone}</strong>
                     </div>
                     <div style={styles.profileItem}>
-                      <span style={styles.profileItemLabel}>📍 Residential Address</span>
-                      <strong style={styles.profileItemVal}>{candidate?.address || address || 'Provided'}</strong>
-                    </div>
-                    <div style={styles.profileItem}>
-                      <span style={styles.profileItemLabel}>💼 Current Profession</span>
-                      <strong style={styles.profileItemVal}>{candidate?.targetRole || 'Candidate'}</strong>
-                    </div>
-                    <div style={styles.profileItem}>
-                      <span style={styles.profileItemLabel}>🎯 Preferred Track</span>
-                      <strong style={styles.profileItemVal}>{candidate?.preferredTrack || preferredTrack} Track</strong>
+                      <span style={styles.profileItemLabel}>🎯 Target Role</span>
+                      <strong style={{ ...styles.profileItemVal, color: '#60a5fa' }}>{candidate?.targetRole || targetRole}</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Venue & Schedule Pass (when scheduled by Admin) */}
-                {isScheduled && cohort?.schedule ? (
+                {cohort?.gdStatus === 'scheduled' && cohort.schedule ? (
                   <div style={styles.schedulePassBox}>
                     <div style={styles.scheduleHeaderRow}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1.4rem' }}>🎟️</span>
-                        <strong style={{ fontSize: '1.1rem', color: '#ffffff' }}>Official GD Session Pass</strong>
-                      </div>
-                      <span style={styles.confirmedPill}>✓ Venue Confirmed</span>
+                      <div style={{ fontSize: '1.2rem' }}>🎟️</div>
+                      <strong style={{ color: '#ffffff', fontSize: '1.05rem', letterSpacing: '0.05em' }}>OFFICIAL GD ADMIT PASS</strong>
                     </div>
-
+                    
                     <div style={styles.scheduleGrid}>
                       <div style={styles.scheduleItem}>
                         <span style={styles.scheduleLabel}>📅 Date</span>
                         <strong style={styles.scheduleVal}>{cohort.schedule.date}</strong>
                       </div>
                       <div style={styles.scheduleItem}>
-                        <span style={styles.scheduleLabel}>⏰ Time</span>
+                        <span style={styles.scheduleLabel}>🕒 Time</span>
                         <strong style={styles.scheduleVal}>{cohort.schedule.time}</strong>
                       </div>
                       <div style={styles.scheduleItem}>
-                        <span style={styles.scheduleLabel}>📍 Venue Location</span>
+                        <span style={styles.scheduleLabel}>🏢 Venue Location</span>
                         <strong style={styles.scheduleVal}>{cohort.schedule.location}</strong>
                       </div>
                       <div style={styles.scheduleItem}>
@@ -572,66 +554,10 @@ export const GDCandidatePortalPage: React.FC = () => {
                     </div>
 
                     <div style={styles.invitationNotice}>
-                      📧 Official confirmation pass with these venue details has been dispatched to <strong>{candidate?.email || email}</strong>.
+                      📨 Official confirmation pass with these venue details has been dispatched to <strong>{candidate?.email || email}</strong>.
                     </div>
                   </div>
                 ) : null}
-
-                {/* Real Qualified Cohort Roster (Only real candidates who registered and passed aptitude) */}
-                <div style={styles.teamRosterBox}>
-                  <div style={styles.rosterHeaderRow}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#ffffff', fontWeight: 900 }}>
-                        👥 Assigned GD Cohort: <span style={{ color: '#60a5fa' }}>{cohort?.teamName || 'Cohort Alpha'}</span>
-                      </h3>
-                      <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-                        {cohort?.candidates.length || 1} / 5 Qualified Candidates Enrolled
-                      </div>
-                    </div>
-                    <span style={styles.rosterTag}>REAL QUALIFIED CANDIDATES ONLY</span>
-                  </div>
-
-                  <div style={styles.candidateGrid}>
-                    {cohort?.candidates.map((cand, idx) => {
-                      const isMe = cand.email.toLowerCase() === (email || currentUser?.email || '').toLowerCase();
-                      return (
-                        <div
-                          key={cand.id || idx}
-                          style={{
-                            ...styles.candidateCard,
-                            borderColor: isMe ? '#60a5fa' : 'rgba(255, 255, 255, 0.1)',
-                            background: isMe ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                            <div style={{ ...styles.avatarCircle, background: isMe ? '#2563eb' : 'rgba(255, 255, 255, 0.12)' }}>
-                              {cand.fullName.charAt(0)}
-                            </div>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <strong style={{ color: '#ffffff', fontSize: '0.92rem' }}>{cand.fullName}</strong>
-                                {isMe && <span style={styles.youBadge}>YOU</span>}
-                              </div>
-                              <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '0.1rem' }}>
-                                {cand.targetRole || 'Candidate'}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={styles.candScoreTag}>
-                            Aptitude: {cand.aptitudeScore}/{cand.aptitudeTotal}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {(cohort?.candidates.length || 1) < 5 && (
-                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
-                      ⏳ Additional qualified candidates will be added automatically to this cohort as they complete and pass the Aptitude Round.
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </div>
