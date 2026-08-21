@@ -1,4 +1,4 @@
-import { getRecordedVideoUrl } from '../../utils/videoStorage';
+import { getRecordedVideoUrl, saveRecordedVideo } from '../../utils/videoStorage';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/client';
@@ -1133,6 +1133,10 @@ const VideoPlayer: React.FC<{
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = React.useState(false);
   const [currentSrc, setCurrentSrc] = React.useState<string | null>(null);
+  const [isTestRecording, setIsTestRecording] = React.useState(false);
+  const [testCountdown, setTestCountdown] = React.useState<number>(0);
+  const testRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const testChunksRef = React.useRef<Blob[]>([]);
 
   const cleanFilename = (recordingId || src || '')
     .replace(/^https?:\/\/[^/]+/, '')
@@ -1141,53 +1145,100 @@ const VideoPlayer: React.FC<{
     .split('#')[0]
     .split('?')[0];
 
-  React.useEffect(() => {
-    let isMounted = true;
+  const loadCandidateVideo = React.useCallback(async () => {
+    // 1. Search IndexedDB for the candidate's exact recorded webcam video
+    const keysToTry = [
+      candidateId || '',
+      `cand-${candidateId}`,
+      `rec-${candidateId}`,
+      candidateName ? candidateName.toLowerCase().trim().replace(/\s+/g, '-') : '',
+      'latest_interview_recording',
+      recordingId || '',
+      cleanFilename || '',
+      'rec-local-1',
+    ].filter(Boolean);
 
-    async function resolveCandidateVideo() {
-      // 1. Search IndexedDB for the candidate's exact recorded webcam video
-      const keysToTry = [
-        candidateId || '',
-        `cand-${candidateId}`,
-        `rec-${candidateId}`,
-        candidateName ? candidateName.toLowerCase().trim().replace(/\s+/g, '-') : '',
-        'latest_interview_recording',
-        recordingId || '',
-        cleanFilename || '',
-        'rec-local-1',
-      ].filter(Boolean);
-
-      try {
-        const localBlobUrl = await getRecordedVideoUrl(keysToTry);
-        if (localBlobUrl && isMounted) {
-          console.log('[VideoPlayer] Found real candidate webcam recording from local storage');
-          setCurrentSrc(localBlobUrl);
-          return;
-        }
-      } catch (e) {
-        console.warn('[VideoPlayer] IndexedDB lookup note:', e);
-      }
-
-      // 2. Check if a direct server upload URL is provided
-      if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
-        if (isMounted) {
-          setCurrentSrc(src);
-        }
+    try {
+      const localBlobUrl = await getRecordedVideoUrl(keysToTry);
+      if (localBlobUrl) {
+        console.log('[VideoPlayer] Found real candidate webcam recording from local storage');
+        setCurrentSrc(localBlobUrl);
         return;
       }
-
-      // 3. If no recording captured, set null
-      if (isMounted) {
-        setCurrentSrc(null);
-      }
+    } catch (e) {
+      console.warn('[VideoPlayer] IndexedDB lookup note:', e);
     }
 
-    resolveCandidateVideo();
+    // 2. Check if a direct server upload URL is provided
+    if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
+      setCurrentSrc(src);
+      return;
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [src, recordingId, candidateId, candidateName, cleanFilename]);
+    setCurrentSrc(null);
+  }, [candidateId, candidateName, recordingId, cleanFilename, src]);
+
+  React.useEffect(() => {
+    loadCandidateVideo();
+  }, [loadCandidateVideo]);
+
+  // Quick 6-Second Camera Recording Test directly from Admin page
+  const handleStartQuickTest = async () => {
+    try {
+      setIsTestRecording(true);
+      setTestCountdown(6);
+      testChunksRef.current = [];
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+
+      const mimeType =
+        MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' :
+        MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' :
+        MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : '';
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      testRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          testChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(testChunksRef.current, { type: 'video/webm' });
+        const candKey = candidateId || 'cand-local';
+        await saveRecordedVideo(candKey, blob);
+        await saveRecordedVideo(`cand-${candKey}`, blob);
+        await saveRecordedVideo('latest_interview_recording', blob);
+        const newUrl = URL.createObjectURL(blob);
+        setCurrentSrc(newUrl);
+        setIsTestRecording(false);
+      };
+
+      recorder.start(500);
+
+      let count = 6;
+      const interval = setInterval(() => {
+        count -= 1;
+        setTestCountdown(count);
+        if (count <= 0) {
+          clearInterval(interval);
+          if (recorder.state === 'recording') {
+            recorder.stop();
+          }
+        }
+      }, 1000);
+    } catch (err: any) {
+      console.error('[QuickTest] Camera access failed:', err);
+      alert('Camera access error: ' + (err?.message || 'Please allow camera and mic permissions'));
+      setIsTestRecording(false);
+    }
+  };
 
   if (!currentSrc) {
     return (
@@ -1195,7 +1246,7 @@ const VideoPlayer: React.FC<{
         style={{
           padding: '2.5rem 1.5rem',
           textAlign: 'center',
-          background: 'rgba(15, 23, 42, 0.65)',
+          background: 'rgba(15, 23, 42, 0.75)',
           borderRadius: '18px',
           border: '1.5px dashed rgba(255, 255, 255, 0.2)',
           color: '#cbd5e1',
@@ -1203,11 +1254,53 @@ const VideoPlayer: React.FC<{
       >
         <div style={{ fontSize: '2.5rem', marginBottom: '0.6rem' }}>📹</div>
         <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#ffffff', marginBottom: '0.35rem' }}>
-          No Webcam Recording Found for This Candidate
+          {isTestRecording ? `🔴 Recording Live Camera Test... (${testCountdown}s remaining)` : 'No Webcam Recording Found for This Candidate'}
         </div>
-        <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '480px', margin: '0 auto', lineHeight: 1.5 }}>
-          When you conduct a live interview round with your webcam on this device, your full recorded session will appear and play back directly here.
+        <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '480px', margin: '0 auto 1.25rem auto', lineHeight: 1.5 }}>
+          When a candidate takes a live interview with their webcam, their recording automatically appears here. You can also record a quick webcam sample right now to test.
         </p>
+
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleStartQuickTest}
+            disabled={isTestRecording}
+            style={{
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              border: 'none',
+              background: isTestRecording ? '#dc2626' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: isTestRecording ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)',
+            }}
+          >
+            {isTestRecording ? `🔴 Recording (${testCountdown}s)…` : '📹 Record 6-Second Webcam Test Now'}
+          </button>
+
+          <a
+            href="/interview"
+            style={{
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            🚀 Start Full Candidate Interview
+          </a>
+        </div>
       </div>
     );
   }
@@ -1270,6 +1363,22 @@ const VideoPlayer: React.FC<{
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <button
+            onClick={handleStartQuickTest}
+            disabled={isTestRecording}
+            style={{
+              padding: '0.35rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            {isTestRecording ? `🔴 ${testCountdown}s` : '📹 Re-Record Webcam'}
+          </button>
           <span
             style={{
               fontSize: '0.75rem',

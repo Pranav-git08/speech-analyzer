@@ -1,6 +1,6 @@
 /**
  * IndexedDB Video Storage Utility
- * Stores large binary video Blobs (WebM/MP4) locally in the browser
+ * Stores binary video Blobs (WebM/MP4) locally in the browser
  * so that candidate interview webcam recordings can be replayed instantly
  * in the Admin portal with 0ms network latency and zero server disk limits.
  */
@@ -37,6 +37,7 @@ export async function saveRecordedVideo(key: string, blob: Blob): Promise<boolea
       const store = tx.objectStore(STORE_NAME);
       const cleanKey = key.trim().toLowerCase();
       store.put(blob, cleanKey);
+      store.put(blob, 'latest_interview_recording');
 
       tx.oncomplete = () => {
         console.log(`[VideoStorage] Saved ${(blob.size / (1024 * 1024)).toFixed(2)} MB video recording for key: ${cleanKey}`);
@@ -86,5 +87,13 @@ export async function getRecordedVideoUrl(keys: string[]): Promise<string | null
       }
     } catch {}
   }
+
+  try {
+    const latestBlob = await getRecordedVideo('latest_interview_recording');
+    if (latestBlob && latestBlob.size > 1000) {
+      return URL.createObjectURL(latestBlob);
+    }
+  } catch {}
+
   return null;
 }
