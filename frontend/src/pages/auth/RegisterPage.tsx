@@ -474,23 +474,6 @@ export const RegisterPage: React.FC = () => {
                 🔑 Sign In
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('code_entry');
-                  setFormError('');
-                  setCodeError('');
-                  setVerifiedCodeInfo(null);
-                }}
-                style={{
-                  ...styles.tabBtn,
-                  background: mode === 'code_entry' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'transparent',
-                  color: mode === 'code_entry' ? '#ffffff' : '#94a3b8',
-                  boxShadow: mode === 'code_entry' ? '0 4px 15px rgba(245, 158, 11, 0.4)' : 'none',
-                }}
-              >
-                🎟️ Unique Code
-              </button>
             </div>
 
             {/* Title & Subtitle */}
@@ -772,21 +755,14 @@ export const RegisterPage: React.FC = () => {
                   {submitting ? 'Signing In...' : 'Sign In & Access Assessment ➔'}
                 </button>
 
-                {/* Quick Link to Unique Code entry */}
+                {/* Note about Unique Code requirement */}
                 <div style={styles.uniqueCodePromptBox}>
                   <div style={{ fontSize: '0.84rem', color: '#fef08a', fontWeight: 800, marginBottom: '0.3rem' }}>
-                    🎟️ Cleared GD & Received an Admin Unique Code?
+                    ℹ️ Don't have a unique code?
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('code_entry');
-                      setFormError('');
-                    }}
-                    style={styles.enterCodeLinkBtn}
-                  >
-                    Click Here to Choose Track with Unique Code ➔
-                  </button>
+                  <div style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.4' }}>
+                    This indicates you haven't cleared the GD round yet. Please complete the GD assessment first to receive your access code.
+                  </div>
                 </div>
 
                 <div style={styles.footerNote}>
