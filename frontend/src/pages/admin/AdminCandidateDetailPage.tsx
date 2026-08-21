@@ -1185,7 +1185,30 @@ const VideoPlayer: React.FC<{
 
   React.useEffect(() => {
     loadCandidateVideo();
-  }, [loadCandidateVideo]);
+    // ✅ Retry polling: check every 3s for up to 30s in case video is still being saved
+    let retries = 0;
+    const retryInterval = setInterval(async () => {
+      retries++;
+      if (retries > 10) { clearInterval(retryInterval); return; }
+      const keysToCheck = [
+        candidateId || '',
+        'cand-' + (candidateId || ''),
+        'rec-' + (candidateId || ''),
+        'latest_interview_recording',
+        'rec-local-1',
+      ].filter(Boolean);
+      try {
+        const url = await getRecordedVideoUrl(keysToCheck);
+        if (url) {
+          setCurrentSrc(url);
+          setIsCandidateRecording(true);
+          clearInterval(retryInterval);
+          console.log('[VideoPlayer] Found candidate video on retry #' + retries);
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(retryInterval);
+  }, [loadCandidateVideo, candidateId]);
 
   // Quick 6-Second Camera Recording Test directly from Admin page
   const handleStartQuickTest = async () => {

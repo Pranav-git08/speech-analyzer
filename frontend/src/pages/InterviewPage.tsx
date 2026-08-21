@@ -240,12 +240,7 @@ const InterviewPage: React.FC = () => {
     queueRunningRef.current = true;
     while (chunkQueueRef.current.length > 0) {
       const item = chunkQueueRef.current.shift()!;
-      const sid = streamIdRef.current;
-      if (!sid) {
-        // If streamId not ready yet, put item back and wait
-        chunkQueueRef.current.unshift(item);
-        break;
-      }
+      const sid = streamIdRef.current || 'local';
       try {
         const fd = new FormData();
         fd.append('chunk', item.blob, 'chunk.webm');
@@ -1235,8 +1230,12 @@ const InterviewPage: React.FC = () => {
       height={145}
       onStreamReady={(stream) => {
         streamRef.current = stream;
-        if (streamIdRef.current && !recordingStartedRef.current) {
-          startRecordingStream(stream, streamIdRef.current);
+        // ✅ Start recording immediately — never wait for server streamId
+        // On Vercel the server stream/start call fails → recording never started before
+        if (!recordingStartedRef.current) {
+          const localStreamId = streamIdRef.current || ('local-stream-' + Date.now());
+          streamIdRef.current = localStreamId;
+          startRecordingStream(stream, localStreamId);
         }
       }}
     />
