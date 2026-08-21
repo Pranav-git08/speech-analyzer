@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
-import { sendOtpEmail } from '../../utils/emailService';
 import {
   registerCandidate,
   loginCandidate,
   isEmailRegistered,
-  sendRegistrationOTP,
-  verifyRegistrationOTP,
 } from '../../utils/userStore';
 import { getCandidateGDInfo, validateInterviewAccessCode } from '../../utils/gdStore';
 
