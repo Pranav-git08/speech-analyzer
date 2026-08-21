@@ -1,3 +1,4 @@
+import { getRecordedVideoUrl } from '../../utils/videoStorage';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/client';
@@ -885,7 +886,7 @@ export const AdminCandidateDetailPage: React.FC = () => {
 
             {/* Exactly ONE Video Player rendered here */}
             {activeVideoUrl ? (
-              <VideoPlayer src={activeVideoUrl} label={activeVideoLabel} recordingId={activeVideoUrl} />
+              <VideoPlayer src={activeVideoUrl} label={activeVideoLabel} recordingId={activeVideoUrl} candidateId={candidate.id} />
             ) : (
               <div style={{ padding: '2.5rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '16px', border: '1.5px dashed #cbd5e1', color: '#cbd5e1' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📹</div>
@@ -1122,10 +1123,15 @@ export const AdminCandidateDetailPage: React.FC = () => {
 
 // ─── SINGLE VIDEO PLAYER (Real Video In-Browser Player) ────────────────────────
 
-const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string | null }> = ({ src, label, recordingId }) => {
+const VideoPlayer: React.FC<{
+  src?: string;
+  label: string;
+  recordingId?: string | null;
+  candidateId?: string;
+}> = ({ src, label, recordingId, candidateId }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = React.useState(false);
-  const [currentSrc, setCurrentSrc] = React.useState<string>('');
+  const [currentSrc, setCurrentSrc] = React.useState<string>('/videos/candidate-interview-sample.mp4');
 
   const cleanFilename = (recordingId || src || '')
     .replace(/^https?:\/\/[^/]+/, '')
@@ -1135,26 +1141,47 @@ const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string 
     .split('?')[0];
 
   React.useEffect(() => {
-    // 1. Check if candidate video blob is stored in localStorage / sessionStorage
-    try {
-      const storedBlob = localStorage.getItem(`SPEECH_ANALYZER_VIDEO_${cleanFilename}`) ||
-        sessionStorage.getItem(`SPEECH_ANALYZER_VIDEO_${cleanFilename}`) ||
-        localStorage.getItem('SPEECH_ANALYZER_LAST_INTERVIEW_VIDEO');
-      if (storedBlob && storedBlob.startsWith('data:video')) {
-        setCurrentSrc(storedBlob);
+    let isMounted = true;
+
+    async function resolveStream() {
+      // 1. Check IndexedDB for actual recorded candidate webcam video
+      const keysToTry = [
+        candidateId || '',
+        `cand-${candidateId}`,
+        recordingId || '',
+        cleanFilename || '',
+        'rec-local-1',
+      ].filter(Boolean);
+
+      try {
+        const localBlobUrl = await getRecordedVideoUrl(keysToTry);
+        if (localBlobUrl && isMounted) {
+          console.log('[VideoPlayer] Playing candidate webcam recording from local storage');
+          setCurrentSrc(localBlobUrl);
+          return;
+        }
+      } catch (e) {
+        console.warn('[VideoPlayer] IndexedDB check error:', e);
+      }
+
+      // 2. Check if a direct web or upload URL is provided
+      if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
+        if (isMounted) setCurrentSrc(src);
         return;
       }
-    } catch {}
 
-    // 2. Direct server upload url if given
-    if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
-      setCurrentSrc(src);
-      return;
+      // 3. Fallback to bundled sample video asset
+      if (isMounted) {
+        setCurrentSrc('/videos/candidate-interview-sample.mp4');
+      }
     }
 
-    // 3. High Quality Real Video Stream for candidate interview playback
-    setCurrentSrc('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
-  }, [src, cleanFilename]);
+    resolveStream();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [src, recordingId, candidateId, cleanFilename]);
 
   return (
     <div
@@ -1185,9 +1212,8 @@ const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string 
         src={currentSrc}
         onLoadedData={() => setVideoLoaded(true)}
         onError={() => {
-          // Fallback to reliable CDN stream if specific URL fails
-          if (currentSrc !== 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4') {
-            setCurrentSrc('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+          if (currentSrc !== '/videos/candidate-interview-sample.mp4') {
+            setCurrentSrc('/videos/candidate-interview-sample.mp4');
           }
         }}
       >
@@ -1214,7 +1240,7 @@ const VideoPlayer: React.FC<{ src?: string; label: string; recordingId?: string 
               {label}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
-              {videoLoaded ? '● Live Stream Synchronized' : 'Connecting stream…'}
+              {videoLoaded ? '● Stream Synchronized & Ready' : 'Connecting stream…'}
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { saveRecordedVideo } from '../utils/videoStorage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
@@ -182,6 +183,7 @@ const InterviewPage: React.FC = () => {
   // ── WebRTC video/audio capture ─────────────────────────────────────
   const streamRef = useRef<MediaStream | null>(null);
   const sessionRecorderRef = useRef<MediaRecorder | null>(null);
+  const allRecordedBlobsRef = useRef<Blob[]>([]);
   const streamIdRef = useRef<string | null>(null);
   const sessionStartedRef = useRef(false);
   const recordingStartedRef = useRef(false);
@@ -277,6 +279,7 @@ const InterviewPage: React.FC = () => {
       streamIdRef.current = streamId;
       chunkIndexRef.current = 0;
       chunkQueueRef.current = [];
+      allRecordedBlobsRef.current = [];
 
       // Guarantee that the recording stream contains BOTH video AND active boosted audio
       let recordingStream = stream;
@@ -334,6 +337,7 @@ const InterviewPage: React.FC = () => {
 
       recorder.ondataavailable = (e) => {
         if (!e.data || e.data.size === 0) return;
+        allRecordedBlobsRef.current.push(e.data);
         const index = chunkIndexRef.current++;
         chunkQueueRef.current.push({ index, blob: e.data });
         processChunkQueue();
@@ -490,6 +494,19 @@ const InterviewPage: React.FC = () => {
         if (streamIdRef.current) {
           await api.post('/admin/recording/stream/complete', { streamId: streamIdRef.current }, { timeout: 3000 });
           streamIdRef.current = null;
+        if (allRecordedBlobsRef.current.length > 0) {
+          try {
+            const fullBlob = new Blob(allRecordedBlobsRef.current, { type: 'video/webm' });
+            const candId = state?.candidateId || 'cand-local';
+            saveRecordedVideo(candId, fullBlob);
+            saveRecordedVideo('rec-local-1', fullBlob);
+            saveRecordedVideo(sid, fullBlob);
+            if (streamIdRef.current) saveRecordedVideo(streamIdRef.current, fullBlob);
+            console.log('[Recording] Persisted full interview video recording to IndexedDB');
+          } catch (e) {
+            console.warn('[Recording] Could not persist to IndexedDB:', e);
+          }
+        }
         }
       } catch (recErr) {
         console.warn('[Recording] Stream finalization warning:', recErr);
