@@ -214,14 +214,7 @@ export const RegisterPage: React.FC = () => {
 
     // 1. If candidate has a unique interview code (passed GD) → show track selection
     if (gdCand?.uniqueInterviewCode && gdCand.uniqueInterviewCode.trim()) {
-      // They've passed GD — show unique code entry so they can choose TJI / NTJI
-      sessionStorage.setItem('VOXIS_VERIFIED_INTERVIEW_CODE', gdCand.uniqueInterviewCode.trim());
-      setVerifiedCodeInfo({
-        valid: true,
-        candidateName: result.user?.fullName || signInEmail.split('@')[0],
-        email: signInEmail,
-        code: gdCand.uniqueInterviewCode.trim(),
-      });
+      // Force them to manually enter the code for security
       setMode('code_entry');
       return;
     }
@@ -445,7 +438,23 @@ export const RegisterPage: React.FC = () => {
           <div style={styles.authCard}>
             {/* Mode Switcher Tabs */}
             <div style={styles.tabContainer}>
-
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setFormError('');
+                  setCodeError('');
+                  setVerifiedCodeInfo(null);
+                }}
+                style={{
+                  ...styles.tabBtn,
+                  background: mode === 'register' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
+                  color: mode === 'register' ? '#ffffff' : '#94a3b8',
+                  boxShadow: mode === 'register' ? '0 4px 15px rgba(37, 99, 235, 0.4)' : 'none',
+                }}
+              >
+                📝 Register
+              </button>
 
               <button
                 type="button"
