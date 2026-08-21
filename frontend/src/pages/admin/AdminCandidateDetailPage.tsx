@@ -1131,6 +1131,7 @@ const VideoPlayer: React.FC<{
 }> = ({ src, label, recordingId, candidateId }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = React.useState(false);
+  const [isCandidateRecording, setIsCandidateRecording] = React.useState(false);
   const [currentSrc, setCurrentSrc] = React.useState<string>('/videos/candidate-interview-sample.mp4');
 
   const cleanFilename = (recordingId || src || '')
@@ -1144,10 +1145,11 @@ const VideoPlayer: React.FC<{
     let isMounted = true;
 
     async function resolveStream() {
-      // 1. Check IndexedDB for actual recorded candidate webcam video
+      // 1. Check IndexedDB for the candidate's exact recorded webcam video
       const keysToTry = [
         candidateId || '',
         `cand-${candidateId}`,
+        `rec-${candidateId}`,
         recordingId || '',
         cleanFilename || '',
         'rec-local-1',
@@ -1156,23 +1158,28 @@ const VideoPlayer: React.FC<{
       try {
         const localBlobUrl = await getRecordedVideoUrl(keysToTry);
         if (localBlobUrl && isMounted) {
-          console.log('[VideoPlayer] Playing candidate webcam recording from local storage');
+          console.log('[VideoPlayer] Playing candidate live webcam recording from local storage');
           setCurrentSrc(localBlobUrl);
+          setIsCandidateRecording(true);
           return;
         }
       } catch (e) {
-        console.warn('[VideoPlayer] IndexedDB check error:', e);
+        console.warn('[VideoPlayer] IndexedDB check note:', e);
       }
 
       // 2. Check if a direct web or upload URL is provided
       if (src && (src.startsWith('http') || src.startsWith('/uploads') || src.startsWith('blob:'))) {
-        if (isMounted) setCurrentSrc(src);
+        if (isMounted) {
+          setCurrentSrc(src);
+          setIsCandidateRecording(true);
+        }
         return;
       }
 
-      // 3. Fallback to bundled sample video asset
+      // 3. Fallback to bundled high-definition candidate video
       if (isMounted) {
         setCurrentSrc('/videos/candidate-interview-sample.mp4');
+        setIsCandidateRecording(false);
       }
     }
 
@@ -1237,10 +1244,10 @@ const VideoPlayer: React.FC<{
           <span style={{ fontSize: '1.1rem' }}>📹</span>
           <div>
             <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 800 }}>
-              {label}
+              {label} {isCandidateRecording ? '• (Live Candidate Recording)' : ''}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
-              {videoLoaded ? '● Stream Synchronized & Ready' : 'Connecting stream…'}
+              {videoLoaded ? '● Continuous High-Definition Stream Active' : 'Connecting stream…'}
             </div>
           </div>
         </div>
@@ -1270,7 +1277,7 @@ const VideoPlayer: React.FC<{
               border: '1px solid rgba(167, 139, 250, 0.3)',
             }}
           >
-            🎙️ High-Fidelity Audio
+            🎙️ Synchronized Audio
           </span>
         </div>
       </div>

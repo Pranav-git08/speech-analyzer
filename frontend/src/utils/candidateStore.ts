@@ -359,7 +359,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
           roundType: found.track === 'TJI' ? 'technical' : 'qualifying',
           status: 'completed',
           finalGrade: found.overallGrade,
-          recordingId: found.recordingDeleted ? null : 'rec-local-1',
+          recordingId: found.recordingDeleted ? null : `rec-${found.id}`,
           startedAt: found.createdAt,
           completedAt: found.createdAt,
           questions: found.answers.map((a) => ({

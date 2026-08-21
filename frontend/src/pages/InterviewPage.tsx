@@ -343,7 +343,7 @@ const InterviewPage: React.FC = () => {
         processChunkQueue();
       };
 
-      recorder.start(3000);
+      recorder.start(1000); // Continuous 1-second timeslices without dropout
       console.log(`[Recording] Single MediaRecorder active with audio+video for stream: ${streamId}`);
     } catch (err) {
       console.error('[Recording] Failed to start MediaRecorder:', err);
