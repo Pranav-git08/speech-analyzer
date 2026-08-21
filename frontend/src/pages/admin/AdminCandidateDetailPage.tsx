@@ -1703,10 +1703,10 @@ const CandidateIntelligenceDossierPanel: React.FC<{
             </ul>
           </div>
 
-          {/* 3. Growth Opportunities */}
+          {/* 3. Behavioral & Communication Assessment */}
           <div style={{ background: 'rgba(15, 23, 42, 0.75)', border: '1.5px solid rgba(56, 189, 248, 0.4)', borderRadius: '14px', padding: '1.15rem', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#38bdf8', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span>🔵</span> Growth Opportunities
+              <span>🗣️</span> Behavioral & Communication Assessment
             </div>
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.88rem', color: '#ffffff', lineHeight: 1.6, fontWeight: 500 }}>
               {dossier.swot.opportunities.map((o, i) => <li key={i} style={{ marginBottom: '0.25rem' }}>{o}</li>)}

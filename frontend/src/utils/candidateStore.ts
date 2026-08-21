@@ -459,15 +459,15 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
 
         const opportunities: string[] = [];
         if (communicationFluency < 70) {
-          opportunities.push('Enhancing professional vocabulary and structured articulation will improve communication impact');
+          opportunities.push('Communication Check: Enhancing professional vocabulary and structured articulation is recommended.');
         } else {
-          opportunities.push('Leverage strong articulation and vocabulary for cross-functional or client-facing discussions');
+          opportunities.push('Communication Check: Excellent professional vocabulary and structured articulation demonstrated.');
         }
         
         if (emotionalPoise < 70) {
-          opportunities.push('Focus on maintaining steady vocal pacing and projecting confidence under pressure');
+          opportunities.push('Confidence Check: Needs to focus on maintaining steady vocal pacing under pressure.');
         } else {
-          opportunities.push('High confidence levels indicate readiness for leadership or high-stakes presentation scenarios');
+          opportunities.push('Confidence Check: High executive presence and poise demonstrated under pressure.');
         }
 
         const risks: string[] = [];
