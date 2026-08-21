@@ -15,19 +15,8 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
 
   const isCurrent = (path: string) => location.pathname === path;
 
-  // Determine if on TJI, NTJI, GD, Aptitude, or Interview pages to hide registration option
-  const isInterviewOrAuthTrack = [
-    '/login/tji',
-    '/tji',
-    '/login/ntji',
-    '/ntji',
-    '/interview',
-    '/roles',
-    '/gd',
-    '/gd-cohort',
-    '/aptitude',
-    '/aptitude-round',
-  ].some((p) => location.pathname.startsWith(p));
+
+
 
   const openDiagnostic = (tab: DiagnosticTab) => {
     setInitialDiagTab(tab);
@@ -178,23 +167,8 @@ export const IOSNavbar: React.FC<IOSNavbarProps> = () => {
             📶 System Check
           </button>
 
-          {/* 5. Candidate Register Button (REMOVED/HIDDEN on TJI, NTJI, GD & Interview stages) */}
-          {!isInterviewOrAuthTrack && (
-            <button
-              onClick={() => navigate('/register')}
-              style={{
-                ...navBtnStyle(isCurrent('/register') || isCurrent('/signup'), '59, 130, 246'),
-                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.4) 0%, rgba(124, 58, 237, 0.4) 100%)',
-                color: '#ffffff',
-                border: '1.5px solid rgba(96, 165, 250, 0.6)',
-                boxShadow: '0 0 15px rgba(59, 130, 246, 0.35)',
-              }}
-              className="luxury-sheen-btn glass-clickable"
-              title="Candidate Account Registration"
-            >
-              📝 Register
-            </button>
-          )}
+
+
 
           {/* 6. Admin Console Login (Positioned at the very last) */}
           <button

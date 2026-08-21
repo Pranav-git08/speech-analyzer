@@ -647,6 +647,26 @@ const InterviewPage: React.FC = () => {
       });
       setLastEval(localEval);
 
+      // ✅ STRICT 2-QUESTION GATE: After 2 answers, check if candidate passed at least 2
+      const answeredCount = localEvalScoresRef.current.length;
+      if (answeredCount >= 2) {
+        const passedCount = localEvalScoresRef.current.filter(s => s >= 60).length;
+        if (passedCount < 2) {
+          // Candidate failed the minimum 2-question gate — terminate session
+          setTimeout(async () => {
+            setLastEval(null);
+            setStatus('terminated');
+            setErrorMsg(
+              '😔 You gave it your best shot! Unfortunately, your first two responses did not meet our assessment threshold. ' +
+              'Every great journey starts with learning — keep building your skills and come back stronger! 💪'
+            );
+            await finishSession(sessionId);
+            setSubmitting(false);
+          }, 2200);
+          return;
+        }
+      }
+
       setTimeout(async () => {
         setLastEval(null);
         setAiHint('');

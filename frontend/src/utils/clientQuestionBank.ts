@@ -243,13 +243,19 @@ export function evaluateLocalAnswer(
   const communicationClarity = Math.min(100, Math.round(60 + (words > 15 ? 30 : 10) + Math.random() * 10));
   const relevance = Math.min(100, Math.round(keywordRatio * 60 + 40));
 
-  const score = Math.max(50, Math.round(technicalAccuracy * 0.5 + communicationClarity * 0.3 + relevance * 0.2));
+  // ✅ STRICT: No minimum floor — candidate must actually match keywords to score well
+  const rawScore = Math.round(technicalAccuracy * 0.6 + communicationClarity * 0.2 + relevance * 0.2);
+  const score = matchedKeywords.length === 0 ? Math.min(20, rawScore) : Math.max(10, Math.min(100, rawScore));
 
   return {
     questionId: question.id,
     grade: score >= 60 ? 'pass' : 'poor',
     score,
     matchedKeywords: matchedKeywords.length > 0 ? matchedKeywords : [question.skill],
-    feedback: `Good coverage of core concepts. Matched key competencies: ${matchedKeywords.join(', ') || question.skill}. Answer depth: ${words} words.`,
+    feedback: matchedKeywords.length >= 3
+      ? `Strong answer. Matched ${matchedKeywords.length}/${keywords.length} key concepts: ${matchedKeywords.join(', ')}. Word depth: ${words} words.`
+      : matchedKeywords.length > 0
+      ? `Partial coverage. Only matched ${matchedKeywords.length}/${keywords.length} keywords (${matchedKeywords.join(', ')}). Missing: ${keywords.filter(k => !matchedKeywords.includes(k)).slice(0, 3).join(', ')}.`
+      : `Answer does not cover required concepts. Expected: ${keywords.slice(0, 4).join(', ')}. Word count: ${words}.`,
   };
 }

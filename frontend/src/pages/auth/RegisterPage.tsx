@@ -209,19 +209,33 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    // Check candidate's GD & Aptitude status for intelligent routing
+    // Smart routing: Check candidate's stage using email AI check
     const { candidate: gdCand } = getCandidateGDInfo(signInEmail);
 
-    if (gdCand?.gdStatus === 'approved' && gdCand.uniqueInterviewCode) {
-      // Approved in GD -> go to GD Portal with unlocked choice
-      navigate('/gd');
-    } else if (gdCand) {
-      // In GD Cohort -> go to GD portal
-      navigate('/gd');
-    } else {
-      // New / Standard candidate -> go to Aptitude round
-      navigate('/aptitude');
+    // 1. If candidate has a unique interview code (passed GD) → show track selection
+    if (gdCand?.uniqueInterviewCode && gdCand.uniqueInterviewCode.trim()) {
+      // They've passed GD — show unique code entry so they can choose TJI / NTJI
+      sessionStorage.setItem('VOXIS_VERIFIED_INTERVIEW_CODE', gdCand.uniqueInterviewCode.trim());
+      setVerifiedCodeInfo({
+        valid: true,
+        candidateName: result.user?.fullName || signInEmail.split('@')[0],
+        email: signInEmail,
+        code: gdCand.uniqueInterviewCode.trim(),
+      });
+      setMode('code_entry');
+      return;
     }
+    // 2. If candidate is in GD cohort but not yet approved → GD portal
+    if (gdCand?.gdStatus === 'approved') {
+      navigate('/gd');
+      return;
+    }
+    if (gdCand) {
+      navigate('/gd');
+      return;
+    }
+    // 3. New / standard candidate → Aptitude round
+    navigate('/aptitude');
   };
 
   // Direct Unique Access Code Entry Handler
@@ -302,6 +316,30 @@ export const RegisterPage: React.FC = () => {
 
       {/* Top Floating Glass Header */}
       <header style={styles.topHeader}>
+        {/* Back Button — Top Left Corner */}
+        <button
+          onClick={handleSmartBack}
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            left: '1rem',
+            zIndex: 9999,
+            background: 'rgba(15, 23, 42, 0.85)',
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            borderRadius: '12px',
+            padding: '0.5rem 1rem',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+          title="Go back"
+        >
+          ← Back
+        </button>
+
         <div style={styles.logoRow}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }} onClick={() => navigate('/')}>
             <div style={styles.logoIcon}>🎙️</div>
@@ -310,13 +348,6 @@ export const RegisterPage: React.FC = () => {
               <span style={styles.proPill}>PRO</span>
             </div>
           </div>
-          <button
-            onClick={handleSmartBack}
-            style={styles.backBtn}
-            title="Go back"
-          >
-            ← Back
-          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -414,23 +445,7 @@ export const RegisterPage: React.FC = () => {
           <div style={styles.authCard}>
             {/* Mode Switcher Tabs */}
             <div style={styles.tabContainer}>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('register');
-                  setFormError('');
-                  setCodeError('');
-                  setVerifiedCodeInfo(null);
-                }}
-                style={{
-                  ...styles.tabBtn,
-                  background: mode === 'register' ? 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)' : 'transparent',
-                  color: mode === 'register' ? '#ffffff' : '#94a3b8',
-                  boxShadow: mode === 'register' ? '0 4px 15px rgba(37, 99, 235, 0.4)' : 'none',
-                }}
-              >
-                📝 Register
-              </button>
+
 
               <button
                 type="button"
