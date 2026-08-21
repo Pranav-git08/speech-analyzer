@@ -235,8 +235,20 @@ export function evaluateLocalAnswer(
   const matchedKeywords = keywords.filter((kw: string) => text.includes(kw.toLowerCase().trim()));
   const keywordRatio = keywords.length > 0 ? matchedKeywords.length / keywords.length : 0.7;
 
-  // Word count and depth check
   const words = text.trim().split(/\s+/).filter(Boolean).length;
+
+  // Extremely strict gate: If they didn't even say 5 words, or they missed almost all keywords, fail them hard.
+  if (words < 5 || keywordRatio < 0.2) {
+    const penaltyScore = Math.max(10, Math.round(keywordRatio * 50)); 
+    return {
+      questionId: question.id,
+      grade: 'poor',
+      score: penaltyScore,
+      matchedKeywords: matchedKeywords.length > 0 ? matchedKeywords : [],
+      feedback: `Answer is irrelevant, nonsensical, or too short. Did not cover key concepts.`,
+    };
+  }
+
   const lengthScore = Math.min(100, Math.round((words / 35) * 100));
 
   const technicalAccuracy = Math.min(100, Math.round(keywordRatio * 75 + (lengthScore > 40 ? 25 : 10)));

@@ -244,12 +244,12 @@ export function saveCandidateSessionToLocal(data: {
       type: a.question.type,
       content: a.answerText,
       score: a.evaluation?.score || data.score,
-      grade: (a.evaluation?.score || data.score) >= 50 ? ('pass' as const) : ('poor' as const),
+      grade: (a.evaluation?.score || data.score) >= 60 ? ('pass' as const) : ('poor' as const),
       feedback: a.evaluation?.feedback || 'Demonstrated strong domain competence.',
       matchedKeywords: a.evaluation?.matchedKeywords || [a.question.skill],
     }));
 
-    const isPassing = data.score >= 50;
+    const isPassing = data.score >= 60;
     const status: CandidateStatus = isPassing
       ? data.track === 'TJI' ? 'pending_gd' : 'pending_hr'
       : 'rejected';
@@ -424,7 +424,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
         const strongSkills = passingAnswers.map(a => a.skill).filter((s, i, arr) => arr.indexOf(s) === i);
         const weakSkills = failingAnswers.map(a => a.skill).filter((s, i, arr) => arr.indexOf(s) === i && !strongSkills.includes(s));
 
-        const decision = avgScore >= 75 ? 'strong_hire' : avgScore >= 55 ? 'hire' : 'do_not_hire';
+        const decision = avgScore >= 75 ? 'strong_hire' : avgScore >= 60 ? 'hire' : 'do_not_hire';
         const confidence = Math.min(99, Math.max(60, Math.round(50 + (passingAnswers.length / Math.max(1, answers.length)) * 49)));
 
         // Build accurate executive summary from real performance
@@ -449,7 +449,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
         if (strongSkills.length > 0) strengths.push(`Demonstrated competency in: ${strongSkills.slice(0,3).join(', ')}`);
         if (allMatchedKeywords.length >= 5) strengths.push(`Accurate use of technical terminology: ${allMatchedKeywords.slice(0,4).join(', ')}`);
         if (passingAnswers.length >= 3) strengths.push('Consistent performance across multiple evaluation areas');
-        if (strengths.length === 0) strengths.push('Shows willingness to attempt technical questions');
+        if (strengths.length === 0) strengths.push('No notable technical strengths demonstrated in this session');
 
         const weaknesses: string[] = [];
         if (weakSkills.length > 0) weaknesses.push(`Below-threshold performance in: ${weakSkills.slice(0,3).join(', ')}`);
@@ -463,7 +463,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
         opportunities.push('Practical project experience would strengthen theoretical knowledge demonstrated');
 
         const risks: string[] = [];
-        if (avgScore < 55) risks.push('Current evaluation score below hiring threshold — re-evaluation recommended after skill development');
+        if (avgScore < 60) risks.push(`Candidate does not meet the technical threshold and is not a fit for the ${found.jobRoleName} role.`);
         if ((found.proctoringEvents?.length || 0) > 0) risks.push(`${found.proctoringEvents!.length} proctoring event(s) logged — review integrity report`);
         if (risks.length === 0) risks.push('Monitor performance in advanced rounds; ensure alignment with role expectations');
 
