@@ -59,7 +59,7 @@ export const AdminCandidateDetailPage: React.FC = () => {
   const [actionMsg, setActionMsg] = useState('');
   const [actionError, setActionError] = useState('');
   const [copiedHrCode, setCopiedHrCode] = useState(false);
-
+  const [copiedGdCode, setCopiedGdCode] = useState(false);
 
   // Offer letter modal state
   const [offerLetterFile, setOfferLetterFile] = useState<File | null>(null);
@@ -632,47 +632,95 @@ export const AdminCandidateDetailPage: React.FC = () => {
             </p>
           </div>
 
-          {/* HR Passcode Box with 1-Click Copy */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '2px solid #38bdf8',
-              borderRadius: '14px',
-              padding: '0.6rem 1.1rem',
-              boxShadow: '0 4px 12px rgba(56, 189, 248, 0.15)',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
-                Candidate HR Passcode:
-              </div>
-              <code style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>
-                {candidate.hrCode || candidate.uniqueCode || 'HR-CODE'}
-              </code>
-            </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(candidate.hrCode || candidate.uniqueCode || '');
-                setCopiedHrCode(true);
-                setTimeout(() => setCopiedHrCode(false), 2000);
-              }}
+          {/* Codes Container */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {/* TJI / NTJI GD Passcode Box */}
+            <div
               style={{
-                background: copiedHrCode ? '#10b981' : '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                padding: '0.45rem 0.85rem',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 800,
-                fontSize: '0.8rem',
-                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '2px solid #a855f7',
+                borderRadius: '14px',
+                padding: '0.6rem 1.1rem',
+                boxShadow: '0 4px 12px rgba(168, 85, 247, 0.15)',
               }}
             >
-              {copiedHrCode ? '✓ Copied!' : '📋 Copy Code'}
-            </button>
+              <div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#a855f7', textTransform: 'uppercase' }}>
+                  TJI/NTJI Access Code:
+                </div>
+                <code style={{ fontSize: '1.25rem', fontWeight: 900, color: '#a855f7', letterSpacing: '0.05em' }}>
+                  {candidate.gdCode || 'NOT ISSUED'}
+                </code>
+              </div>
+              {candidate.gdCode && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(candidate.gdCode || '');
+                    setCopiedGdCode(true);
+                    setTimeout(() => setCopiedGdCode(false), 2000);
+                  }}
+                  style={{
+                    background: copiedGdCode ? '#10b981' : '#9333ea',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {copiedGdCode ? '✓ Copied!' : '📋 Copy Code'}
+                </button>
+              )}
+            </div>
+
+            {/* HR Passcode Box with 1-Click Copy */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '2px solid #38bdf8',
+                borderRadius: '14px',
+                padding: '0.6rem 1.1rem',
+                boxShadow: '0 4px 12px rgba(56, 189, 248, 0.15)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
+                  Candidate HR Passcode:
+                </div>
+                <code style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>
+                  {candidate.hrCode || candidate.uniqueCode || 'HR-CODE'}
+                </code>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(candidate.hrCode || candidate.uniqueCode || '');
+                  setCopiedHrCode(true);
+                  setTimeout(() => setCopiedHrCode(false), 2000);
+                }}
+                style={{
+                  background: copiedHrCode ? '#10b981' : '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {copiedHrCode ? '✓ Copied!' : '📋 Copy Code'}
+              </button>
+            </div>
           </div>
         </div>
 
