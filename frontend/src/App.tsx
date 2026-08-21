@@ -17,12 +17,16 @@ import { AdminGDPage } from './pages/admin/AdminGDPage';
 import { GDCandidatePortalPage } from './pages/GDCandidatePortalPage';
 import MicTestPage from './pages/MicTestPage';
 import GestureSystem from './components/GestureSystem';
+import { VirtualEmailInbox } from './components/VirtualEmailInbox';
 
 const App: React.FC = () => {
   return (
     <BrowserRouter>
       {/* Global Interactive 3D Gesture & Shortcut Suite */}
       <GestureSystem enableCursorTrail={true} />
+      
+      {/* Global Virtual Email Inbox for Demo purposes */}
+      <VirtualEmailInbox />
 
       <Routes>
         <Route path="/" element={<LandingPage />} />

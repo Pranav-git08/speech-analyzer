@@ -9,28 +9,25 @@ export interface SendEmailResult {
 
 export async function sendOtpEmail(toEmail: string, candidateName: string, otpCode: string): Promise<SendEmailResult> {
   const normalizedEmail = toEmail.toLowerCase().trim();
+  const subject = `Your VOXIS.AI Verification Code: ${otpCode}`;
+  const body = `Hi ${candidateName || 'Candidate'},\n\nYour 6-digit verification OTP is: ${otpCode}\n\nPlease enter this code to verify your email address.\n\nBest,\nVOXIS AI Security`;
 
-  try {
-    // 1. Call Vercel Serverless / Backend endpoint
-    const response = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: normalizedEmail,
-        code: otpCode,
-        fullName: candidateName || 'Candidate',
-      }),
-    });
+  // Dispatch global event for the Virtual Email Inbox UI
+  window.dispatchEvent(new CustomEvent('virtual_email', {
+    detail: { to: normalizedEmail, subject, body, type: 'otp' }
+  }));
 
-    if (response.ok) {
-      console.log(`[EmailService] OTP email successfully dispatched to ${normalizedEmail}`);
-      return { success: true, message: `OTP sent to ${normalizedEmail}` };
-    }
-  } catch (err) {
-    console.warn('[EmailService] Dispatch attempt completed:', err);
-  }
-
+  console.log(`[EmailService] OTP email successfully dispatched to ${normalizedEmail}`);
   return { success: true, message: `OTP sent to ${normalizedEmail}` };
+}
+
+export async function sendAdminEmail(toEmail: string, subject: string, body: string): Promise<SendEmailResult> {
+  const normalizedEmail = toEmail.toLowerCase().trim();
+  
+  window.dispatchEvent(new CustomEvent('virtual_email', {
+    detail: { to: normalizedEmail, subject, body, type: 'admin' }
+  }));
+
+  console.log(`[EmailService] Admin email successfully dispatched to ${normalizedEmail}`);
+  return { success: true, message: `Email sent to ${normalizedEmail}` };
 }

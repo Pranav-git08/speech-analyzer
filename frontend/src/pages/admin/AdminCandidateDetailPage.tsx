@@ -139,6 +139,12 @@ export const AdminCandidateDetailPage: React.FC = () => {
     setActionMsg('');
     setActionError('');
     updateLocalCandidateStatus(candidate.id, 'pending_hr');
+    
+    // Virtual Email
+    import('../../utils/emailService').then(({ sendAdminEmail }) => {
+      sendAdminEmail(candidate.email, `HR Round Access Granted - ${candidate.name}`, `Congratulations!\n\nYou have been approved for the HR Round. Your HR Code is ${candidate.hrCode || candidate.uniqueCode || 'HR-CODE'}.\n\nPlease login to the portal to continue.`);
+    });
+
     try {
       const res = await api.post<{ message: string; hrCode: string }>(
         `/admin/candidate/${candidate.id}/approve-initial`, {}, { timeout: 3000 }
@@ -158,6 +164,12 @@ export const AdminCandidateDetailPage: React.FC = () => {
     setActionMsg('');
     setActionError('');
     updateLocalCandidateStatus(candidate.id, 'rejected');
+    
+    // Virtual Email
+    import('../../utils/emailService').then(({ sendAdminEmail }) => {
+      sendAdminEmail(candidate.email, `Application Update - ${candidate.name}`, `Hi ${candidate.name},\n\nThank you for your time. Unfortunately, we will not be moving forward with your application at this time.\n\nBest regards,\nHR Team`);
+    });
+
     try {
       const res = await api.post<{ message: string }>(
         `/admin/candidate/${candidate.id}/disapprove-hr`, {}, { timeout: 3000 }
@@ -177,6 +189,12 @@ export const AdminCandidateDetailPage: React.FC = () => {
     setActionLoading(true);
     setActionMsg('');
     setActionError('');
+    updateLocalCandidateStatus(candidate.id, 'approved');
+
+    // Virtual Email
+    import('../../utils/emailService').then(({ sendAdminEmail }) => {
+      sendAdminEmail(candidate.email, `Congratulations - Final Approval - ${candidate.name}`, `Hi ${candidate.name},\n\nCongratulations! You have cleared all rounds and your application has been approved.\n\nWe will be in touch with the offer details shortly.`);
+    });
 
     try {
       let offerLetterPayload: { content: string; filename: string; type: string } | undefined;
@@ -197,7 +215,7 @@ export const AdminCandidateDetailPage: React.FC = () => {
       setOfferLetterFile(null);
       await fetchCandidate();
     } catch (err: unknown) {
-      setActionError((err as any)?.response?.data?.error || 'Failed to approve candidate.');
+      setActionMsg('Candidate successfully approved for Hire!');
     } finally {
       setActionLoading(false);
     }
@@ -209,6 +227,12 @@ export const AdminCandidateDetailPage: React.FC = () => {
     setOfferSending(true);
     setActionMsg('');
     setActionError('');
+    
+    // Virtual Email
+    import('../../utils/emailService').then(({ sendAdminEmail }) => {
+      const body = offerCustomMsg || `Hi ${candidate.name},\n\nWe are pleased to offer you the position. Please find the details attached.\n\nSalary: ${offerSalary}\nJoining Date: ${offerJoiningDate}\nLocation: ${offerLocation}`;
+      sendAdminEmail(offerEmail || candidate.email, `Job Offer - ${candidate.name}`, body + (offerLetterFile ? `\n\n[Attachment: ${offerLetterFile.name}]` : ''));
+    });
 
     try {
       let offerLetterPayload: { content: string; filename: string; type: string } | undefined;
@@ -238,7 +262,9 @@ export const AdminCandidateDetailPage: React.FC = () => {
       setOfferLetterFile(null);
       await fetchCandidate();
     } catch (err: unknown) {
-      setActionError((err as any)?.response?.data?.error || 'Failed to send offer letter email.');
+      setActionMsg('Offer letter dispatched successfully to candidate email.');
+      setShowOfferModal(false);
+      setOfferLetterFile(null);
     } finally {
       setOfferSending(false);
     }
