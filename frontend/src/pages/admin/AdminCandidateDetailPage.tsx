@@ -78,12 +78,22 @@ export const AdminCandidateDetailPage: React.FC = () => {
   );
   const [offerSending, setOfferSending] = useState(false);
 
-
-    const fetchCandidate = async () => {
+  const fetchCandidate = async () => {
     setLoading(true);
     setError('');
+    
+    // Immediately load from fast local storage to bypass 3000ms backend timeout
+    const localCand = getLocalCandidateDetail(id!);
+    if (localCand) {
+      setCandidate(localCand as any);
+      setPassingThreshold(50);
+      if (localCand.email) setOfferEmail(localCand.email);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await api.get<CandidateDetailResponse>(`/admin/candidate/${id}`, { timeout: 3000 });
+      const res = await api.get<CandidateDetailResponse>(`/admin/candidate/${id}`, { timeout: 1000 });
       const cand = res.data?.candidate;
       if (cand) {
         setCandidate(cand);
@@ -91,24 +101,11 @@ export const AdminCandidateDetailPage: React.FC = () => {
         if (cand?.email) {
           setOfferEmail(cand.email);
         }
-        return;
-      }
-    } catch (err: unknown) {
-      console.warn('[AdminDetail] Backend candidate fetch failed, checking local store:', err);
-    }
-
-    // Local fallback
-    if (id) {
-      const localCand = getLocalCandidateDetail(id);
-      if (localCand) {
-        setCandidate(localCand);
-        setPassingThreshold(50);
-        if (localCand.email) {
-          setOfferEmail(localCand.email);
-        }
         setLoading(false);
         return;
       }
+    } catch (err) {
+      // API fallback failed
     }
 
     setError('Candidate record not found.');
