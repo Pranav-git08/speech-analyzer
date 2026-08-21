@@ -440,7 +440,7 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
         const technicalAcumen = Math.min(100, Math.max(10, Math.round(passingAnswers.length / Math.max(1, answers.length) * 100 * 0.7 + avgScore * 0.3)));
         const communicationFluency = Math.min(100, Math.max(20, Math.round(avgScore * 0.6 + (allMatchedKeywords.length * 3))));
         const emotionalPoise = Math.min(100, Math.max(30, Math.round(100 - (found.proctoringEvents?.length || 0) * 8)));
-        const nonVerbalPresence = Math.min(100, Math.max(30, emotionalPoise - 5 + Math.random() * 5));
+        const nonVerbalPresence = Math.round(Math.min(100, Math.max(30, emotionalPoise - 5 + Math.random() * 5)));
         const problemSolving = technicalAcumen;
         const overallIndex = Math.round((technicalAcumen + communicationFluency + emotionalPoise + problemSolving) / 4);
 
@@ -458,9 +458,17 @@ export function getLocalCandidateDetail(id: string): CandidateDetail | null {
         if (weaknesses.length === 0) weaknesses.push('Minor gaps in advanced concept elaboration');
 
         const opportunities: string[] = [];
-        if (avgScore >= 60) opportunities.push(`Good foundation to grow into senior ${found.jobRoleName} roles with mentorship`);
-        else opportunities.push(`Structured upskilling in ${weakSkills.slice(0,2).join(', ') || found.jobRoleName} can significantly improve readiness`);
-        opportunities.push('Practical project experience would strengthen theoretical knowledge demonstrated');
+        if (communicationFluency < 70) {
+          opportunities.push('Enhancing professional vocabulary and structured articulation will improve communication impact');
+        } else {
+          opportunities.push('Leverage strong articulation and vocabulary for cross-functional or client-facing discussions');
+        }
+        
+        if (emotionalPoise < 70) {
+          opportunities.push('Focus on maintaining steady vocal pacing and projecting confidence under pressure');
+        } else {
+          opportunities.push('High confidence levels indicate readiness for leadership or high-stakes presentation scenarios');
+        }
 
         const risks: string[] = [];
         if (avgScore < 60) risks.push(`Candidate does not meet the technical threshold and is not a fit for the ${found.jobRoleName} role.`);
