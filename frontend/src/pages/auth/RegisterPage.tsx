@@ -516,7 +516,7 @@ export const RegisterPage: React.FC = () => {
                   <span style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase' }}>
                     Verified Interview Code
                   </span>
-                  <div style={styles.verifiedCodeText}>{verifiedCodeInfo.code}</div>
+                  <div style={styles.verifiedCodeText}>••••••••••••</div>
                   <span style={{ fontSize: '0.82rem', color: '#4ade80', fontWeight: 800 }}>
                     ✓ Valid for Technical (TJI) & Non-Technical (NTJI)
                   </span>
