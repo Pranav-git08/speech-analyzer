@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import twilio from 'twilio';
 import sgMail from '@sendgrid/mail';
+import { Resend } from 'resend';
 import { pool } from '../db/connection';
 import { config } from '../config/env';
 
@@ -282,7 +283,35 @@ export async function sendEmail(
   body: string,
   html?: string,
   attachments?: EmailAttachment[]
-): Promise<{ success: boolean; mode: 'sendgrid' | 'smtp' | 'simulated'; messageId?: string }> {
+): Promise<{ success: boolean; mode: 'sendgrid' | 'smtp' | 'resend' | 'simulated'; messageId?: string }> {
+  
+  // 0. Try Resend (The easiest modern API, completely bypasses Render SMTP block)
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey && resendKey.startsWith('re_')) {
+    try {
+      const resend = new Resend(resendKey);
+      const resendFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+      
+      const msg = {
+        from: resendFrom,
+        to: email,
+        subject,
+        text: body,
+        html: html || body,
+        attachments: attachments?.map((a) => ({
+          filename: a.filename,
+          content: a.content // base64 string
+        })),
+      };
+      
+      const data = await withRetry(() => resend.emails.send(msg), `sendEmail (Resend) to ${email}`);
+      console.log(`[Email] Successfully delivered via Resend to ${email} (id: ${data?.data?.id})`);
+      return { success: true, mode: 'resend', messageId: data?.data?.id };
+    } catch (err) {
+      console.warn('[Email] Resend delivery failed:', err);
+    }
+  }
+
   // 1. Try SendGrid if a real API key is provided
   const sendgridKey = config.sendgrid.apiKey;
   const isSendGridReal = sendgridKey && !sendgridKey.includes('your_sendgrid_api_key') && sendgridKey.startsWith('SG.');

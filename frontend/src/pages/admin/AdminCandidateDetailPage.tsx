@@ -81,9 +81,16 @@ export const AdminCandidateDetailPage: React.FC = () => {
   const fetchCandidate = async () => {
     setLoading(true);
     setError('');
-    
-    // Immediately load from fast local storage to bypass 3000ms backend timeout
-    const localCand = getLocalCandidateDetail(id!);
+
+    // Guard: missing id
+    if (!id) {
+      setError('Candidate ID missing from URL.');
+      setLoading(false);
+      return;
+    }
+
+    // Try fast local storage first
+    const localCand = getLocalCandidateDetail(id);
     if (localCand) {
       setCandidate(localCand as any);
       setPassingThreshold(50);
@@ -92,24 +99,27 @@ export const AdminCandidateDetailPage: React.FC = () => {
       return;
     }
 
+    // Fallback to remote API (short timeout)
     try {
-      const res = await api.get<CandidateDetailResponse>(`/admin/candidate/${id}`, { timeout: 1000 });
+      const res = await api.get<CandidateDetailResponse>(`/admin/candidate/${id}`, {
+        timeout: 1500,
+      });
       const cand = res.data?.candidate;
       if (cand) {
         setCandidate(cand);
         setPassingThreshold(res.data?.passingThreshold || 50);
-        if (cand?.email) {
-          setOfferEmail(cand.email);
-        }
+        if (cand?.email) setOfferEmail(cand.email);
         setLoading(false);
         return;
       }
-    } catch (err) {
-      // API fallback failed
+    } catch (apiErr) {
+      console.warn('[AdminCandidateDetail] API fetch failed:', apiErr);
+    } finally {
+      // Ensure loading flag cleared if we didn't return earlier
+      setLoading(false);
     }
 
     setError('Candidate record not found.');
-    setLoading(false);
   };
 
   useEffect(() => {

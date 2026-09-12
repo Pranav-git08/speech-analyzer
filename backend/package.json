@@ -11,7 +11,7 @@
     "test:run": "jest --runInBand --forceExit"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.0",
+    "@sendgrid/mail": "^8.1.6",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/nodemailer": "^8.0.1",
     "@types/sql.js": "^1.4.11",
@@ -30,6 +30,7 @@
     "pdf-parse": "^1.1.1",
     "pg": "^8.11.3",
     "redis": "^4.6.10",
+    "resend": "^6.28.0",
     "socket.io": "^4.8.3",
     "sql.js": "^1.14.1",
     "twilio": "^4.19.0",

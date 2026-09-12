@@ -146,7 +146,6 @@ export const GDCandidatePortalPage: React.FC = () => {
 
   const isApproved = candidate?.gdStatus === 'approved';
   const isRejected = candidate?.gdStatus === 'rejected';
-  const isScheduled = cohort?.status === 'scheduled' || !!cohort?.schedule;
 
   return (
     <div style={styles.pageContainer}>
@@ -522,12 +521,12 @@ export const GDCandidatePortalPage: React.FC = () => {
                     </div>
                     <div style={styles.profileItem}>
                       <span style={styles.profileItemLabel}>🎯 Target Role</span>
-                      <strong style={{ ...styles.profileItemVal, color: '#60a5fa' }}>{candidate?.targetRole || targetRole}</strong>
+                      <strong style={{ ...styles.profileItemVal, color: '#60a5fa' }}>{candidate?.targetRole || 'Candidate'}</strong>
                     </div>
                   </div>
                 </div>
 
-                {cohort?.gdStatus === 'scheduled' && cohort.schedule ? (
+                {cohort?.status === 'scheduled' && cohort.schedule ? (
                   <div style={styles.schedulePassBox}>
                     <div style={styles.scheduleHeaderRow}>
                       <div style={{ fontSize: '1.2rem' }}>🎟️</div>
