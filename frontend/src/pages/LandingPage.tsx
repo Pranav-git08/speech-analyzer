@@ -4,44 +4,21 @@ import IOSNavbar from '../components/IOSNavbar';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-
   return (
     <div style={styles.pageContainer}>
-      {/* Background Aura Effects */}
-      <div style={{...styles.aura, ...styles.aura1}}></div>
-      <div style={{...styles.aura, ...styles.aura2}}></div>
-      <div style={{...styles.aura, ...styles.aura3}}></div>
-      
-      {/* Frosted Glass Overlay */}
-      <div style={styles.glassOverlay}></div>
-
       <IOSNavbar />
-      
-      <main style={styles.mainContent}>
-        <div style={styles.heroWrapper}>
-          <div style={styles.badge}>
-            <span style={styles.badgeSparkle}>✨</span>
-            AI Assistant for Interview Evaluation
-          </div>
-          
-          <h1 style={styles.headline}>
-            Evaluate Talent with<br/>
-            <span style={styles.headlineHighlight}>Superhuman Precision.</span>
-          </h1>
-          
-          <p style={styles.subhead}>
-            The next-generation AI Assistant designed to autonomously conduct, analyze, and score candidate interviews with zero human bias.
+      <main style={styles.main}>
+        <section style={styles.card}>
+          <h1 style={styles.title}>AI Assistant for Interview Evaluation</h1>
+          <p style={styles.subtitle}>
+            Enterprise‑grade AI that autonomously conducts, analyses, and scores candidate interviews with zero bias.
           </p>
-          
-          <div style={styles.ctaGroup}>
-            <button style={styles.primaryBtn} onClick={() => navigate('/register')}>
-              Start Interview
-            </button>
-            <button style={styles.secondaryBtn} onClick={() => navigate('/admin')}>
-              Dashboard
-            </button>
+          <div style={styles.actions}>
+            <button style={styles.primaryBtn} onClick={() => navigate('/register')}>Start Interview</button>
+            <button style={styles.secondaryBtn} onClick={() => navigate('/admin')}>Dashboard</button>
           </div>
-        </div>
+        </section>
+        <footer style={styles.footer}>© 2026 AI Assistant for Interview Evaluation – All rights reserved.</footer>
       </main>
     </div>
   );
@@ -50,162 +27,84 @@ export const LandingPage: React.FC = () => {
 const styles: Record<string, React.CSSProperties> = {
   pageContainer: {
     minHeight: '100vh',
-    backgroundColor: '#050505',
-    color: '#ffffff',
+    backgroundColor: '#f5f5f5',
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    color: '#202020',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
-    position: 'relative',
   },
-  aura: {
-    position: 'absolute',
-    borderRadius: '50%',
-    filter: 'blur(120px)',
-    opacity: 0.5,
-    zIndex: 0,
-    animation: 'pulse 10s ease-in-out infinite alternate',
-  },
-  aura1: {
-    top: '-10%',
-    left: '-10%',
-    width: '600px',
-    height: '600px',
-    backgroundColor: '#4f46e5', // Indigo
-  },
-  aura2: {
-    bottom: '-20%',
-    right: '-10%',
-    width: '700px',
-    height: '700px',
-    backgroundColor: '#9333ea', // Purple
-    animationDelay: '2s',
-  },
-  aura3: {
-    top: '30%',
-    left: '40%',
-    width: '500px',
-    height: '500px',
-    backgroundColor: '#0ea5e9', // Sky blue
-    animationDelay: '5s',
-  },
-  glassOverlay: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(5, 5, 5, 0.4)',
-    backdropFilter: 'blur(80px)',
-    WebkitBackdropFilter: 'blur(80px)',
-    zIndex: 1,
-  },
-  mainContent: {
+  main: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0 2rem',
-    position: 'relative',
-    zIndex: 10,
+    padding: '2rem',
   },
-  heroWrapper: {
-    maxWidth: '900px',
+  card: {
+    background: '#ffffff',
+    borderRadius: '12px',
+    padding: '3rem 2rem',
+    maxWidth: '800px',
+    width: '100%',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
     textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    animation: 'fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1)',
   },
-  badge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 16px',
-    borderRadius: '999px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-    fontSize: '0.85rem',
-    fontWeight: 500,
-    color: '#e2e8f0',
-    marginBottom: '2rem',
-    backdropFilter: 'blur(10px)',
-  },
-  badgeSparkle: {
-    fontSize: '1rem',
-  },
-  headline: {
-    fontSize: 'clamp(3rem, 7vw, 5.5rem)',
+  title: {
+    fontSize: 'clamp(2.5rem, 6vw, 4rem)',
     fontWeight: 800,
-    lineHeight: 1.1,
-    letterSpacing: '-0.03em',
-    margin: '0 0 1.5rem 0',
-    color: '#ffffff',
+    marginBottom: '1rem',
+    color: '#111827',
   },
-  headlineHighlight: {
-    background: 'linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    textShadow: '0 0 40px rgba(168, 85, 247, 0.3)',
-  },
-  subhead: {
-    fontSize: 'clamp(1.1rem, 1.5vw, 1.35rem)',
-    color: '#cbd5e1',
-    maxWidth: '650px',
+  subtitle: {
+    fontSize: 'clamp(1rem, 2vw, 1.25rem)',
+    color: '#4b5563',
+    marginBottom: '2rem',
     lineHeight: 1.6,
-    margin: '0 0 3rem 0',
-    fontWeight: 400,
   },
-  ctaGroup: {
+  actions: {
     display: 'flex',
-    gap: '1.25rem',
-    alignItems: 'center',
+    gap: '1rem',
     justifyContent: 'center',
     flexWrap: 'wrap',
   },
   primaryBtn: {
-    background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)',
-    color: '#000000',
+    backgroundColor: '#2563EB',
+    color: '#ffffff',
     border: 'none',
-    padding: '16px 36px',
+    padding: '12px 28px',
     borderRadius: '999px',
-    fontSize: '1.05rem',
+    fontSize: '1rem',
     fontWeight: 600,
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 10px 30px rgba(255, 255, 255, 0.15)',
+    transition: 'background 0.2s',
   },
   secondaryBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    color: '#ffffff',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    padding: '16px 36px',
+    backgroundColor: '#ffffff',
+    color: '#2563EB',
+    border: '2px solid #2563EB',
+    padding: '12px 28px',
     borderRadius: '999px',
-    fontSize: '1.05rem',
-    fontWeight: 500,
+    fontSize: '1rem',
+    fontWeight: 600,
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    backdropFilter: 'blur(10px)',
+    transition: 'background 0.2s',
+  },
+  footer: {
+    textAlign: 'center',
+    padding: '1rem',
+    fontSize: '0.85rem',
+    color: '#6b7280',
+    backgroundColor: '#e5e7eb',
+    marginTop: '2rem',
   },
 };
 
-// Add global keyframes directly to document
+// Simple hover effect injection
 if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.type = 'text/css';
-  styleSheet.innerText = `
-    @keyframes pulse {
-      0% { transform: scale(1) translate(0, 0); }
-      100% { transform: scale(1.1) translate(20px, -20px); }
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    button:hover {
-      transform: translateY(-2px);
-    }
-  `;
-  document.head.appendChild(styleSheet);
+  const styleTag = document.createElement('style');
+  styleTag.innerHTML = 'button:hover { opacity: 0.85; }';
+  document.head.appendChild(styleTag);
 }
 
 export default LandingPage;
