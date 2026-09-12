@@ -8,15 +8,15 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* ─── 3D Glass Fusion: Dark-Light Mesh Backgrounds ──────────────────────── */
-  --bg-mesh-main: linear-gradient(145deg, #090d16 0%, #0f172a 30%, #0a1122 60%, #111827 100%);
-  --bg-mesh-tji: linear-gradient(145deg, #060c18 0%, #0b1c3d 40%, #081329 100%);
-  --bg-mesh-ntji: linear-gradient(145deg, #0d0818 0%, #1c0d3d 40%, #120829 100%);
-  --bg-mesh-hr: linear-gradient(145deg, #061812 0%, #0c382b 40%, #07251d 100%);
-  --bg-mesh-admin: linear-gradient(145deg, #080816 0%, #140e38 40%, #0a0824 100%);
+  --bg-mesh-main: radial-gradient(circle at 50% 0%, #1e1e1e, #000000 70%);
+  --bg-mesh-tji: radial-gradient(circle at 50% 0%, #001122, #000000 70%);
+  --bg-mesh-ntji: radial-gradient(circle at 50% 0%, #110022, #000000 70%);
+  --bg-mesh-hr: radial-gradient(circle at 50% 0%, #001100, #000000 70%);
+  --bg-mesh-admin: radial-gradient(circle at 50% 0%, #111111, #000000 70%);
 
   /* ─── 3D Frosted Glass Tokens ───────────────────────────────────────────── */
-  --glass-bg: rgba(255, 255, 255, 0.07);
-  --glass-bg-card: rgba(15, 23, 42, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.02);
+  --glass-bg-card: rgba(10, 10, 10, 0.7);
   --glass-bg-hover: rgba(255, 255, 255, 0.12);
   --glass-bg-active: rgba(255, 255, 255, 0.16);
   --glass-border: rgba(255, 255, 255, 0.15);
@@ -59,7 +59,7 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--background);
+  background-color: #000000;
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
