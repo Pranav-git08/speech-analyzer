@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassCanvas3D from '../../components/GlassCanvas3D';
+import { sendOtpEmail } from '../../utils/emailService';
 import {
   registerCandidate,
   loginCandidate,
   isEmailRegistered,
+  sendRegistrationOTP,
+  verifyRegistrationOTP,
 } from '../../utils/userStore';
 import { getCandidateGDInfo, validateInterviewAccessCode } from '../../utils/gdStore';
 
@@ -93,7 +96,7 @@ export const RegisterPage: React.FC = () => {
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
-  // Step 1: Register Candidate (Bypassing OTP)
+  // Step 1: Send OTP to candidate's Email & Phone
   const handleInitiateOTP = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -128,8 +131,44 @@ export const RegisterPage: React.FC = () => {
     }
 
     setSubmitting(true);
-    
-    // Bypass OTP, directly register candidate
+    const otp = sendRegistrationOTP(email, phone);
+    sendOtpEmail(email, fullName, otp);
+
+    setResendTimer(60);
+    setEnteredOTP('');
+    setOtpError('');
+    setSubmitting(false);
+    setRegStep('otp');
+  };
+
+  // Step 2: Resend OTP
+  const handleResendOTP = () => {
+    if (resendTimer > 0) return;
+    const otp = sendRegistrationOTP(email, phone);
+    sendOtpEmail(email, fullName, otp);
+    setResendTimer(60);
+    setOtpError('');
+  };
+
+  // Step 3: Verify OTP and finalize Registration
+  const handleVerifyOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError('');
+
+    if (!enteredOTP.trim() || enteredOTP.trim().length !== 6) {
+      setOtpError('Please enter the complete 6-digit verification code sent to your email.');
+      return;
+    }
+
+    setSubmitting(true);
+    const verification = verifyRegistrationOTP(email, enteredOTP);
+
+    if (!verification.valid) {
+      setSubmitting(false);
+      setOtpError(verification.error || 'Invalid OTP code. Please check your email inbox.');
+      return;
+    }
+
     const result = registerCandidate({
       fullName,
       email,
@@ -140,15 +179,12 @@ export const RegisterPage: React.FC = () => {
     setSubmitting(false);
 
     if (!result.success) {
-      setFormError(result.error || 'Registration failed.');
+      setOtpError(result.error || 'Registration failed.');
       return;
     }
 
     setRegStep('success');
   };
-
-  const handleResendOTP = () => {};
-  const handleVerifyOTP = (e: React.FormEvent) => { e.preventDefault(); };
 
   // Intelligent Sign In Handler
   const handleSignInSubmit = (e: React.FormEvent) => {
