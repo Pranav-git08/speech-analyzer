@@ -305,8 +305,14 @@ export async function sendEmail(
       };
       
       const data = await withRetry(() => resend.emails.send(msg), `sendEmail (Resend) to ${email}`);
-      console.log(`[Email] Successfully delivered via Resend to ${email} (id: ${data?.data?.id})`);
-      return { success: true, mode: 'resend', messageId: data?.data?.id };
+      
+      if (data.error) {
+        console.error('[Email] Resend API Error Details:', JSON.stringify(data.error));
+        throw new Error(data.error.message || 'Resend API error');
+      }
+      
+      console.log(`[Email] Successfully delivered via Resend to ${email} (id: ${data.data?.id})`);
+      return { success: true, mode: 'resend', messageId: data.data?.id };
     } catch (err) {
       console.warn('[Email] Resend delivery failed:', err);
     }
